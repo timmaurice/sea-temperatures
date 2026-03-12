@@ -1,0 +1,20 @@
+# Home Assistant Custom Component - Sea Temperature
+# Standard Python ignore
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local testing setup
+config/
+docker-compose.yml
+!config/custom_components/seatemperature
+
+# OS / IDE
+.DS_Store
+.vscode/
+
+# AI context (optional: keep if you want to commit it)
+GEMINI.md

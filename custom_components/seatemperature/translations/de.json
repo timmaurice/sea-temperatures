@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kontinent auswählen",
+        "description": "Bitte wählen Sie den Kontinent für das Gebiet aus, das Sie überwachen möchten.",
+        "data": {
+          "continent": "Kontinent"
+        }
+      },
+      "country": {
+        "title": "Land auswählen",
+        "description": "Bitte wählen Sie das Land aus, in dem sich das Gebiet befindet.",
+        "data": {
+          "country": "Land"
+        }
+      },
+      "place": {
+        "title": "Ort auswählen",
+        "description": "Bitte wählen Sie den Ort aus, den Sie überwachen möchten.",
+        "data": {
+          "place": "Ort"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zu seatemperatures.net fehlgeschlagen. Bitte überprüfen Sie Ihre Internetverbindung.",
+      "unknown": "Unerwarteter Fehler."
+    },
+    "abort": {
+      "already_configured": "Dieser Ort ist bereits konfiguriert."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "today": { "name": "Heute" },
+      "yesterday": { "name": "Gestern" },
+      "last_week": { "name": "Letzte Woche" },
+      "last_year": { "name": "Letztes Jahr" },
+      "average_avg": { "name": "Durchschnittstemperatur" },
+      "average_min": { "name": "Minimaler Durchschnitt" },
+      "average_max": { "name": "Maximaler Durchschnitt" }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select Continent",
+        "description": "Please select the continent for the area you want to monitor.",
+        "data": {
+          "continent": "Continent"
+        }
+      },
+      "country": {
+        "title": "Select Country",
+        "description": "Please select the country the area is located in.",
+        "data": {
+          "country": "Country"
+        }
+      },
+      "place": {
+        "title": "Select Place",
+        "description": "Please select the place you want to monitor.",
+        "data": {
+          "place": "Place"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to seatemperatures.net. Please check your internet connection.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This place is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "today": { "name": "Today" },
+      "yesterday": { "name": "Yesterday" },
+      "last_week": { "name": "Last Week" },
+      "last_year": { "name": "Last Year" },
+      "average_avg": { "name": "Average Temperature" },
+      "average_min": { "name": "Minimum Average" },
+      "average_max": { "name": "Maximum Average" }
+    }
+  }
+}
