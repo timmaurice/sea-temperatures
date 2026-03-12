@@ -39,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
-        name=f"seatemperature_{place_id}",
+        name=f"seatemperatures_{place_id}",
         update_method=async_update_data,
         update_interval=SCAN_INTERVAL,
     )

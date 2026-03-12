@@ -1,0 +1,11 @@
+{
+  "domain": "seatemperatures",
+  "name": "Sea Temperatures",
+  "codeowners": ["@timmaurice"],
+  "config_flow": true,
+  "documentation": "https://github.com/timmaurice/sea-temperatures",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/timmaurice/sea-temperatures/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

@@ -79,8 +79,8 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
 
         place_prefix = slugify(self._place_name)
 
-        self._attr_unique_id = f"seatemperature_{self._place_id}_{description.key}"
-        self.entity_id = f"sensor.seatemperature_{place_prefix}_{description.key}"
+        self._attr_unique_id = f"seatemperatures_{self._place_id}_{description.key}"
+        self.entity_id = f"sensor.seatemperatures_{place_prefix}_{description.key}"
 
     @property
     def native_value(self) -> float | str | None:

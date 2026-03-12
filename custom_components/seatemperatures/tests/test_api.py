@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from custom_components.seatemperature.api import SeaTemperatureAPI
+from custom_components.seatemperatures.api import SeaTemperatureAPI
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ async def test_get_places(mock_hass):
     mock_data = {"Europe": {"Spain": [{"id": 123, "name": "Ibiza", "slug": "ibiza"}]}}
 
     with patch(
-        "custom_components.seatemperature.api.async_get_clientsession"
+        "custom_components.seatemperatures.api.async_get_clientsession"
     ) as mock_session:
         mock_response = AsyncMock()
         mock_response.json.return_value = mock_data
@@ -47,7 +47,7 @@ async def test_get_temperatures(mock_hass):
     }
 
     with patch(
-        "custom_components.seatemperature.api.async_get_clientsession"
+        "custom_components.seatemperatures.api.async_get_clientsession"
     ) as mock_session:
         mock_response = AsyncMock()
         mock_response.json.return_value = mock_data

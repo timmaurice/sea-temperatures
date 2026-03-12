@@ -1,6 +1,6 @@
 {
-  "name": "Sea Temperature",
+  "name": "Sea Temperatures",
   "render_readme": true,
   "zip_release": true,
-  "filename": "seatemperature.zip"
+  "filename": "sea-temperatures.zip"
 }

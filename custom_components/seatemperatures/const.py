@@ -1,6 +1,6 @@
 """Constants for the Sea Temperature integration."""
 
-DOMAIN = "seatemperature"
+DOMAIN = "seatemperatures"
 
 CONF_CONTINENT = "continent"
 CONF_COUNTRY = "country"

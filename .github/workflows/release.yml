@@ -19,15 +19,15 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      # 3. Create ZIP in repo root (only seatemperature folder)
+      # 3. Create ZIP in repo root (only sea-temperatures folder)
       - name: Create zip archive for HACS
         run: |
-          cd custom_components/seatemperature
-          zip -r ../../seatemperature.zip .
+          cd custom_components/seatemperatures
+          zip -r ../../sea-temperatures.zip .
 
       # 4. Verify ZIP exists
       - name: List files
-        run: ls -l seatemperature.zip
+        run: ls -l sea-temperatures.zip
 
       # 5. Create GitHub Release and attach ZIP
       - name: Create GitHub Release
@@ -37,4 +37,4 @@ jobs:
           name: "Version ${{ env.VERSION }}"
           draft: true
           generate_release_notes: true
-          files: seatemperature.zip
+          files: sea-temperatures.zip

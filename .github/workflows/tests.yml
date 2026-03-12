@@ -25,4 +25,4 @@ jobs:
       - name: Run tests (offline)
         run: |
           # Run the full test suite offline. Network calls are blocked by pytest-socket
-          PYTHONPATH=. pytest custom_components/seatemperature/tests
+          PYTHONPATH=. pytest custom_components/seatemperaturess/tests

@@ -1,13 +1,15 @@
 # Sea Temperatures Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/seatemperature?style=flat-square)
-[![GH-downloads](https://img.shields.io/github/downloads/timmaurice/seatemperature/total?style=flat-square)](https://github.com/timmaurice/seatemperature/releases)
-[![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/seatemperature.svg?style=flat-square)](https://github.com/timmaurice/seatemperature/commits/master)
-[![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/seatemperature.svg?style=flat-square)](https://github.com/timmaurice/seatemperature)
-![GitHub](https://img.shields.io/github/license/timmaurice/seatemperature?style=flat-square)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/sea-temperatures?style=flat-square)
+[![GH-downloads](https://img.shields.io/github/downloads/timmaurice/sea-temperatures/total?style=flat-square)](https://github.com/timmaurice/sea-temperatures/releases)
+[![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/sea-temperatures.svg?style=flat-square)](https://github.com/timmaurice/sea-temperatures/commits/master)
+[![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/sea-temperatures.svg?style=flat-square)](https://github.com/timmaurice/sea-temperatures)
+![GitHub](https://img.shields.io/github/license/timmaurice/sea-temperatures?style=flat-square)
 
 This custom integration for Home Assistant fetches sea temperatures directly from [seatemperatures.net](https://seatemperatures.net).
+
+> We provide free daily current and average sea water temperatures for 12,165 locations in 227 countries.
 
 - **Global Coverage**: Select coastal locations from around the world.
 - **Detailed Attributes**: Provides today's temperature alongside historical data (yesterday, last week, last year) and averages as attributes.
@@ -19,12 +21,12 @@ This custom integration for Home Assistant fetches sea temperatures directly fro
 
 This card is available in the [Home Assistant Community Store (HACS)](https://hacs.xyz/).
 
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=seatemperature&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=sea-temperatures&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 
 <details>
 <summary>Manual Installation</summary>
 
-1.  Using the tool of your choice, copy the `seatemperature` folder from `custom_components` in this repository into your Home Assistant's `custom_components` directory.
+1.  Using the tool of your choice, copy the `seatemperatures` folder from `custom_components` in this repository into your Home Assistant's `custom_components` directory.
 2.  Restart Home Assistant.
 </details>
 
@@ -55,9 +57,9 @@ Contributions are welcome! If you find a bug or have a feature request, please o
 
 ---
 
-For further assistance or to [report issues](https://github.com/timmaurice/seatemperature/issues), please visit the [GitHub repository](https://github.com/timmaurice/seatemperature).
+For further assistance or to [report issues](https://github.com/timmaurice/sea-temperatures/issues), please visit the [GitHub repository](https://github.com/timmaurice/sea-temperatures).
 
-![Star History Chart](https://api.star-history.com/svg?repos=timmaurice/seatemperature&type=Date)
+![Star History Chart](https://api.star-history.com/svg?repos=timmaurice/sea-temperatures&type=Date)
 
 ## ☕ Support My Work
 

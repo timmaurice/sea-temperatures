@@ -10,7 +10,7 @@ htmlcov/
 # Local testing setup
 config/
 docker-compose.yml
-!config/custom_components/seatemperature
+!config/custom_components/seatemperatures
 
 # OS / IDE
 .DS_Store
