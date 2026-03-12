@@ -34,7 +34,7 @@ class SeaTemperatureSensorEntityDescription(SensorEntityDescription):
 # Single sensor per place, representing "Today's Temperature"
 SENSORS: tuple[SeaTemperatureSensorEntityDescription, ...] = (
     SeaTemperatureSensorEntityDescription(
-        key="temperature",
+        key="today",
         name="Temperature",
         data_key="today",
         icon="mdi:thermometer",
@@ -77,10 +77,13 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         self._place_name = entry.data.get(CONF_PLACE, "Unknown")
         self._place_id = entry.data[CONF_PLACE_ID]
 
+        # Set friendly name
+        self._attr_name = f"Temperature {self._place_name}"
+
         place_prefix = slugify(self._place_name)
 
-        self._attr_unique_id = f"seatemperatures_{self._place_id}_{description.key}"
-        self.entity_id = f"sensor.seatemperatures_{place_prefix}_{description.key}"
+        self._attr_unique_id = f"{DOMAIN}_{self._place_id}_{description.key}"
+        self.entity_id = f"sensor.{DOMAIN}_{place_prefix}_{description.key}"
 
     @property
     def native_value(self) -> float | str | None:
