@@ -78,7 +78,7 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         self._place_id = entry.data[CONF_PLACE_ID]
 
         # Set friendly name
-        self._attr_name = f"Temperature {self._place_name}"
+        self._attr_name = f"Temperature"
 
         place_prefix = slugify(self._place_name)
 
