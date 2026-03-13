@@ -49,7 +49,7 @@ For each configured place, the following sensor will be created:
 
 | Sensor          | Description                        | Attributes                                                                                 | Example Value |
 | :-------------- | :--------------------------------- | :----------------------------------------------------------------------------------------- | :------------ |
-| **Temperature** | The current sea temperature today. | `yesterday`, `last_week`, `last_year`, `date`, `average_min`, `average_max`, `average_avg` | `21.5`        |
+| **Temperature** | The current sea temperature today. | `yesterday`, `last_week`, `last_year`, `date`, `average_min`, `average_max`, `average_avg`, `charts` | `21.5`        |
 
 ## Contributions
 

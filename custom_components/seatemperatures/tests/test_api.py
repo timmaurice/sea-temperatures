@@ -74,3 +74,6 @@ async def test_get_temperatures(mock_hass):
         assert result["date"] == "2026-03-13"
         assert result["sst"]["today"] == 17.25
         assert result["sst"]["average"]["avg"] == 15.422999999999998
+        assert "charts" in result
+        assert "last_thirty" in result["charts"]
+        assert result["charts"]["last_thirty"]["labels"] == ["03-12", "03-13"]

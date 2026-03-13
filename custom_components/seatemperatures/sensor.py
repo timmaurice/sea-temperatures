@@ -134,6 +134,9 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
                     except (ValueError, TypeError):
                         attrs[f"average_{avg_key}"] = sst_data["average"][avg_key]
 
+        if "charts" in data:
+            attrs["charts"] = data["charts"]
+
         return attrs if attrs else None
 
     @property
