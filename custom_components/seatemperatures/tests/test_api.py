@@ -35,15 +35,24 @@ async def test_get_places(mock_hass):
 
 @pytest.mark.asyncio
 async def test_get_temperatures(mock_hass):
-    """Test getting temperatures from API."""
+    """Test getting temperatures from API including date attribute coverage."""
     api = SeaTemperatureAPI(mock_hass)
 
     mock_data = {
-        "today": 21.5,
-        "yesterday": 21.0,
-        "last_week": 20.5,
-        "last_year": 22.1,
-        "average": {"min": 15.0, "max": 26.0, "avg": 20.0},
+        "date": "2026-03-13",
+        "sst": {
+            "today": 17.25,
+            "yesterday": 17.26,
+            "last_week": 16.17,
+            "last_year": 16.25,
+            "average": {"min": 14.71, "max": 16.25, "avg": 15.422999999999998},
+        },
+        "charts": {
+            "last_thirty": {
+                "labels": ["03-12", "03-13"],
+                "series": [17.26, 17.25],
+            }
+        },
     }
 
     with patch(
@@ -58,4 +67,10 @@ async def test_get_temperatures(mock_hass):
         )
 
         result = await api.get_temperatures("123")
+
+        # Verify result contains the mock data layout including date and nested average
         assert result == mock_data
+        assert "date" in result
+        assert result["date"] == "2026-03-13"
+        assert result["sst"]["today"] == 17.25
+        assert result["sst"]["average"]["avg"] == 15.422999999999998

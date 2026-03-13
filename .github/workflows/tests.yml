@@ -1,5 +1,8 @@
 name: Tests
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [ "main", "master" ]
@@ -25,4 +28,4 @@ jobs:
       - name: Run tests (offline)
         run: |
           # Run the full test suite offline. Network calls are blocked by pytest-socket
-          PYTHONPATH=. pytest custom_components/seatemperaturess/tests
+          PYTHONPATH=. pytest custom_components/seatemperatures/tests

@@ -1,4 +1,4 @@
-# Home Assistant Custom Component - Sea Temperature
+# Home Assistant Custom Component - Sea Temperatures
 # Standard Python ignore
 __pycache__/
 *.py[cod]
@@ -6,6 +6,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+*.DS_Store
 
 # Local testing setup
 config/
