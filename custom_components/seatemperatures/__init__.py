@@ -7,11 +7,19 @@ from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SeaTemperatureAPI
 from .const import CONF_PLACE, CONF_PLACE_ID, DOMAIN
+
+# Patch cv for older HA versions (e.g. during testing)
+if not hasattr(cv, "config_entry_only_config_schema"):
+    import voluptuous as vol
+    cv.config_entry_only_config_schema = lambda domain: vol.Schema({domain: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = [Platform.SENSOR]
 SCAN_INTERVAL = timedelta(hours=2)  # Sea temperatures don't change frequently

@@ -24,7 +24,7 @@ from .const import CONF_PLACE, CONF_PLACE_ID, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class SeaTemperatureSensorEntityDescription(SensorEntityDescription):
     """Class describing Sea Temperature sensor entities."""
 
