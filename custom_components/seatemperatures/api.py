@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -23,7 +22,7 @@ class SeaTemperatureAPI:
         """Fetch the places hierarchy (continents -> countries -> places)."""
         session = async_get_clientsession(self.hass)
         try:
-            async with session.get(API_URL_PLACES, ssl=False) as response:
+            async with session.get(API_URL_PLACES) as response:
                 response.raise_for_status()
                 return await response.json()
         except Exception as err:
@@ -35,7 +34,7 @@ class SeaTemperatureAPI:
         url = f"{API_URL_TEMPS}{place_id}"
         session = async_get_clientsession(self.hass)
         try:
-            async with session.get(url, ssl=False) as response:
+            async with session.get(url) as response:
                 response.raise_for_status()
                 return await response.json()
         except Exception as err:

@@ -22,17 +22,45 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      # 3. Create ZIP in repo root (only sea-temperatures folder)
+      # 3. Sync versions across files
+      - name: Sync version numbers
+        run: |
+          # Remove 'v' prefix if present (e.g., v1.2.0 -> 1.2.0)
+          CLEAN_VERSION=${VERSION#v}
+          echo "Setting versions to $CLEAN_VERSION"
+          
+          # Update Home Assistant manifest
+          jq ".version = \"$CLEAN_VERSION\"" custom_components/seatemperatures/manifest.json > tmp.json && mv tmp.json custom_components/seatemperatures/manifest.json
+          
+          # Update pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"$CLEAN_VERSION\"/" pyproject.toml
+          
+          # Update frontend package.json
+          cd frontend && npm version $CLEAN_VERSION --no-git-tag-version
+
+      # 4. Setup Node and Build Frontend
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      # 4. Create ZIP in repo root (only sea-temperatures folder)
       - name: Create zip archive for HACS
         run: |
           cd custom_components/seatemperatures
           zip -r ../../sea-temperatures.zip .
 
-      # 4. Verify ZIP exists
+      # 5. Verify ZIP exists
       - name: List files
         run: ls -l sea-temperatures.zip
 
-      # 5. Create GitHub Release and attach ZIP
+      # 6. Create GitHub Release and attach ZIP
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:

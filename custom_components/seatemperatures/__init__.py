@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SeaTemperatureAPI
@@ -14,6 +16,31 @@ from .const import CONF_PLACE, CONF_PLACE_ID, DOMAIN
 PLATFORMS = [Platform.SENSOR]
 SCAN_INTERVAL = timedelta(hours=2)  # Sea temperatures don't change frequently
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the Sea Temperatures component."""
+    # Register static path for the card
+    if hasattr(hass.http, "async_register_static_paths"):
+        from homeassistant.components.http import StaticPathConfig
+        await hass.http.async_register_static_paths([
+            StaticPathConfig(
+                url_path="/seatemperatures_frontend/sea-temperatures-card.js",
+                path=hass.config.path("custom_components/seatemperatures/sea-temperatures-card.js"),
+                cache_headers=False,
+            )
+        ])
+    else:
+        hass.http.register_static_path(
+            "/seatemperatures_frontend/sea-temperatures-card.js",
+            hass.config.path("custom_components/seatemperatures/sea-temperatures-card.js"),
+            cache_headers=False,
+        )
+    
+    # Add extra JS url
+    add_extra_js_url(hass, "/seatemperatures_frontend/sea-temperatures-card.js")
+    
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

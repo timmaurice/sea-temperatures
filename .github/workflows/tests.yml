@@ -10,7 +10,7 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  test:
+  test-backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -29,3 +29,44 @@ jobs:
         run: |
           # Run the full test suite offline. Network calls are blocked by pytest-socket
           PYTHONPATH=. pytest custom_components/seatemperatures/tests
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install and test frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run check-format
+          npm run lint
+          npm run test
+
+  test-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Run Pyrefly static type checking
+        run: |
+          pyrefly check
+
+      - name: Run Ruff linter
+        run: |
+          ruff check .

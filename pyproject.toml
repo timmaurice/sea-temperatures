@@ -1,0 +1,30 @@
+[project]
+name = "seatemperatures"
+version = "1.0.0"
+description = "Home Assistant custom component for sea temperatures"
+requires-python = ">=3.12"
+dependencies = [
+    "homeassistant",
+    "aiohttp",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-homeassistant-custom-component",
+    "beautifulsoup4",
+    "lxml",
+    "pytest-asyncio",
+    "pytest-socket",
+    "pyrefly",
+    "ruff",
+]
+
+[tool.pyrefly]
+source-directories = ["custom_components/seatemperatures"]
+strict = false
+exclude = [
+    "tests/.*",
+    "venv/.*",
+    ".venv/.*"
+]

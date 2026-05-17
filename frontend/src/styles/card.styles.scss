@@ -1,0 +1,252 @@
+$min-color: #41bdf5;
+$max-color: #ff9800;
+
+:host ::slotted(.card-content),
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.place-row {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--divider-color, #eee);
+
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .chart-container {
+    margin-top: 16px;
+    width: 100%;
+    height: 120px;
+    background: rgba(var(--rgb-primary-color), 0.03);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .ref-line {
+    stroke-dasharray: 4, 4;
+    stroke-width: 1;
+    opacity: 0.5;
+
+    &.min {
+      stroke: $min-color;
+    }
+    &.max {
+      stroke: $max-color;
+    }
+    &.avg {
+      stroke: var(--primary-color, #0077be);
+      stroke-dasharray: none;
+      opacity: 0.3;
+    }
+  }
+
+  .chart-line {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 2px 4px rgba(var(--rgb-primary-color), 0.2));
+  }
+}
+
+.place-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+.place-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.last-updated {
+  font-size: 0.75rem;
+  color: var(--secondary-text-color);
+  margin-top: 4px;
+}
+
+.place-name {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--primary-text-color);
+}
+
+.current-temp {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.temp-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color, #0077be);
+}
+
+.temp-unit {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--secondary-text-color);
+}
+
+.stats-grid,
+.averages-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--card-background-color);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--secondary-text-color);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.averages-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--divider-color);
+}
+
+.averages-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--secondary-text-color);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.trend-icon {
+  --mdc-icon-size: 24px;
+
+  &.up {
+    color: $max-color;
+  }
+
+  &.down {
+    color: $min-color;
+  }
+
+  &.same {
+    color: var(--secondary-text-color);
+  }
+}
+
+.warning {
+  color: var(--error-color);
+  padding: 8px;
+  text-align: center;
+}
+
+.ref-label {
+  font-size: 8px;
+  font-weight: 500;
+  fill: var(--secondary-text-color);
+  dominant-baseline: middle;
+
+  &.min {
+    fill: $min-color;
+  }
+  &.max {
+    fill: $max-color;
+  }
+  &.avg {
+    fill: var(--primary-color, #0077be);
+  }
+}
+
+.axis-label {
+  font-size: 8px;
+  fill: var(--secondary-text-color);
+  opacity: 0.7;
+}
+
+.now-dot {
+  filter: drop-shadow(0 1px 2px rgba(var(--rgb-primary-color), 0.3));
+}
+
+.extrema-dot {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  &.min {
+    fill: $min-color;
+  }
+  &.max {
+    fill: $max-color;
+  }
+}
+
+.hover-group {
+  pointer-events: none;
+}
+
+.hover-line {
+  stroke: var(--secondary-text-color);
+  stroke-width: 1;
+  stroke-dasharray: 2, 2;
+  opacity: 0.5;
+}
+
+.hover-point {
+  fill: var(--card-background-color);
+  stroke: var(--primary-color, #0077be);
+  stroke-width: 2;
+}
+
+.hover-tooltip-bg {
+  fill: var(--card-background-color);
+  stroke: var(--divider-color, #eee);
+  stroke-width: 1;
+  opacity: 0.95;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.hover-tooltip-text {
+  fill: var(--primary-text-color);
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.hover-tooltip-date {
+  fill: var(--text-primary-color, #fff);
+  opacity: 0.8;
+  font-size: 8px;
+}
+
+.hover-overlay {
+  cursor: crosshair;
+}

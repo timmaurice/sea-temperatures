@@ -1,0 +1,29 @@
+{
+  "editor": {
+    "groups": {
+      "display": "Anzeige"
+    },
+    "title": "Titel (Optional)",
+    "places": "Orte",
+    "show_trend": "Zeige Trend-Indikatoren (24h)",
+    "show_last_updated": "Zuletzt aktualisiert anzeigen",
+    "show_stats": "Statistiken anzeigen (Gestern, Letzte Woche, Letztes Jahr)",
+    "show_chart": "Historisches Diagramm anzeigen (30t)",
+    "chart_smoothing": "Kurvenglättung"
+  },
+  "card": {
+    "place_not_found": "Ort nicht gefunden: {place}"
+  },
+  "common": {
+    "errors": {
+      "no_places": "Du musst mindestens einen Ort definieren."
+    }
+  },
+  "yesterday": "Gestern",
+  "last_week": "Letzte Woche",
+  "last_year": "Letztes Jahr",
+  "averages": "Durchschnitte",
+  "min": "Min",
+  "max": "Max",
+  "avg": "Avg"
+}

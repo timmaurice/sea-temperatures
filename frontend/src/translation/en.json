@@ -1,0 +1,29 @@
+{
+  "editor": {
+    "groups": {
+      "display": "Display"
+    },
+    "title": "Title (Optional)",
+    "places": "Places",
+    "show_trend": "Show trend indicators (24h)",
+    "show_last_updated": "Show last updated",
+    "show_stats": "Show statistics (Yesterday, Last Week, Last Year)",
+    "show_chart": "Show historical chart (30d)",
+    "chart_smoothing": "Chart smoothing"
+  },
+  "card": {
+    "place_not_found": "Place not found: {place}"
+  },
+  "common": {
+    "errors": {
+      "no_places": "You need to define at least one place."
+    }
+  },
+  "yesterday": "Yesterday",
+  "last_week": "Last Week",
+  "last_year": "Last Year",
+  "averages": "Averages",
+  "min": "Min",
+  "max": "Max",
+  "avg": "Avg"
+}
