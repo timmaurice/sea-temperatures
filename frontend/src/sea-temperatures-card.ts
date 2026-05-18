@@ -1,5 +1,5 @@
 import { LitElement, TemplateResult, html, svg, unsafeCSS } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
+import { property, state, query } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCard, LovelaceCardEditor, PlaceConfig, SeaTemperaturesCardConfig } from './types.js';
 import { localize } from './localize.js';
 import { fireEvent, fetchHistory } from './utils.js';
@@ -49,7 +49,6 @@ declare global {
   }
 }
 
-@customElement(ELEMENT_NAME)
 export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @query('ha-card') private _card!: LovelaceCard;
@@ -584,6 +583,10 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   static get styles() {
     return [unsafeCSS(styles)];
   }
+}
+
+if (!customElements.get(ELEMENT_NAME)) {
+  customElements.define(ELEMENT_NAME, SeaTemperaturesCard);
 }
 
 window.customCards = window.customCards || [];
