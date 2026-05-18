@@ -360,7 +360,7 @@ describe('SeaTemperaturesCard', () => {
       const config: SeaTemperaturesCardConfig = {
         type: 'custom:sea-temperatures-card',
         places: [{ device: 'device-1' }, { device: 'device-2' }, { device: 'device-3' }],
-        sort_by: sortBy as any,
+        sort_by: sortBy as SeaTemperaturesCardConfig['sort_by'],
       };
 
       const hass = {
@@ -396,7 +396,9 @@ describe('SeaTemperaturesCard', () => {
 
       card.setConfig(config);
       const data = (
-        card as unknown as { _getPlacesData: (h: HomeAssistant, c: SeaTemperaturesCardConfig) => any[] }
+        card as unknown as {
+          _getPlacesData: (h: HomeAssistant, c: SeaTemperaturesCardConfig) => { name: string; temperature: string }[];
+        }
       )._getPlacesData(hass, config);
       return data;
     };
