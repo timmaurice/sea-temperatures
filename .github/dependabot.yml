@@ -18,7 +18,7 @@ updates:
 
   # Maintain dependencies for Node/Frontend
   - package-ecosystem: 'npm'
-    directory: '/frontend'
+    directory: '/'
     schedule:
       interval: 'weekly'
     commit-message:

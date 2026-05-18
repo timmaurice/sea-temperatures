@@ -596,9 +596,9 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         stroke-width="2"
       ></path>
       
-      ${renderRefLine(place.average_min, 'min', 'Min')}
-      ${renderRefLine(place.average_max, 'max', 'Max')}
-      ${renderRefLine(place.average_avg, 'avg', 'Avg')}
+      ${renderRefLine(place.average_min, 'min', localize(this.hass, 'card.min'))}
+      ${renderRefLine(place.average_max, 'max', localize(this.hass, 'card.max'))}
+      ${renderRefLine(place.average_avg, 'avg', localize(this.hass, 'card.avg'))}
       
       ${minPoint ? svg`<circle class="extrema-dot min" cx="${x(minPoint.date)}" cy="${y(minPoint.value)}" r="3"></circle>` : ''}
       ${maxPoint ? svg`<circle class="extrema-dot max" cx="${x(maxPoint.date)}" cy="${y(maxPoint.value)}" r="3"></circle>` : ''}

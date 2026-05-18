@@ -138,9 +138,9 @@ const ft={attribute:!0,type:String,converter:w,reflect:!1,hasChanged:x},dt=(t=ft
         stroke-width="2"
       ></path>
       
-      ${m(n.average_min,"min","Min")}
-      ${m(n.average_max,"max","Max")}
-      ${m(n.average_avg,"avg","Avg")}
+      ${m(n.average_min,"min",yt(this.hass,"card.min"))}
+      ${m(n.average_max,"max",yt(this.hass,"card.max"))}
+      ${m(n.average_avg,"avg",yt(this.hass,"card.avg"))}
       
       ${$?X`<circle class="extrema-dot min" cx="${u($.date)}" cy="${d($.value)}" r="3"></circle>`:""}
       ${A?X`<circle class="extrema-dot max" cx="${u(A.date)}" cy="${d(A.value)}" r="3"></circle>`:""}
