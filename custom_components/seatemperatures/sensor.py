@@ -24,6 +24,15 @@ from .const import CONF_PLACE, CONF_PLACE_ID, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
+def _to_float(val: Any, round_to: int | None = None) -> float | str:
+    """Safely convert a value to float if possible."""
+    try:
+        f_val = float(val)
+        return round(f_val, round_to) if round_to is not None else f_val
+    except (ValueError, TypeError):
+        return val
+
+
 @dataclass(frozen=True, kw_only=True)
 class SeaTemperatureSensorEntityDescription(SensorEntityDescription):
     """Class describing Sea Temperature sensor entities."""
@@ -71,9 +80,9 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         entry: ConfigEntry,
         description: SeaTemperatureSensorEntityDescription,
     ):
-        """Initialize the sensor."""
         super().__init__(coordinator)
         self.entity_description = description
+        self._entry = entry
         self._place_name = entry.data.get(CONF_PLACE, "Unknown")
         self._place_id = entry.data[CONF_PLACE_ID]
 
@@ -100,11 +109,7 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         data = self.coordinator.data.get("sst", self.coordinator.data)
 
         if self.entity_description.data_key in data:
-            val = data[self.entity_description.data_key]
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return val
+            return _to_float(data[self.entity_description.data_key])
 
         return None
 
@@ -128,24 +133,40 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         if "average" in sst_data:
             for avg_key in ["min", "max", "avg"]:
                 if avg_key in sst_data["average"]:
-                    try:
-                        val = float(sst_data["average"][avg_key])
-                        attrs[f"average_{avg_key}"] = round(val, 2)
-                    except (ValueError, TypeError):
-                        attrs[f"average_{avg_key}"] = sst_data["average"][avg_key]
+                    attrs[f"average_{avg_key}"] = _to_float(
+                        sst_data["average"][avg_key], round_to=2
+                    )
 
         if "charts" in data:
             attrs["charts"] = data["charts"]
+
+        attrs["continent"] = self._entry.data.get("continent", "")
+        attrs["country"] = self._entry.data.get("country", "")
+        attrs["place"] = self._place_name
 
         return attrs if attrs else None
 
     @property
     def device_info(self):
         """Return device information."""
+        continent = self._entry.data.get("continent", "")
+        country = self._entry.data.get("country", "")
+        place = self._entry.data.get("place", "")
+
+        url = "https://seatemperatures.net"
+        if continent and country and place:
+            import re
+
+            def slugify(text: str) -> str:
+                text = text.lower().replace("&", "and").replace("/", " and ")
+                return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+
+            url = f"{url}/{slugify(continent)}/{slugify(country)}/{slugify(place)}/"
+
         return {
             "identifiers": {(DOMAIN, self._place_id)},
             "name": self._place_name,
             "manufacturer": "Sea Temperatures",
             "model": "Sea Temperature Monitor",
-            "configuration_url": "https://seatemperatures.net",
+            "configuration_url": url,
         }

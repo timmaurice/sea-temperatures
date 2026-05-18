@@ -7,35 +7,21 @@ from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
 from .api import SeaTemperatureAPI
 from .const import CONF_PLACE, CONF_PLACE_ID, DOMAIN
-
-CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = [Platform.SENSOR]
 SCAN_INTERVAL = timedelta(hours=2)  # Sea temperatures don't change frequently
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Sea Temperatures component."""
-    import json
+    from homeassistant.loader import async_get_integration
 
-    # Read version from manifest for cache busting
-    version = "1.0.0"
-    try:
-        manifest_path = hass.config.path(
-            "custom_components/seatemperatures/manifest.json"
-        )
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
-            version = manifest.get("version", version)
-    except Exception:
-        pass
+    integration = await async_get_integration(hass, DOMAIN)
+    version = integration.version or "1.0.0"
 
     # Register static path for the card
     from homeassistant.components.http import StaticPathConfig

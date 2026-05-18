@@ -35,7 +35,7 @@ function logCardInfo() {
 }
 
 export default {
-  input: 'src/sea-temperatures-card.ts',
+  input: 'frontend/src/sea-temperatures-card.ts',
   context: 'window', // Fix for "this" being undefined in some modules
   output: {
     file: pkg.main,

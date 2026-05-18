@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seleccionar Continente",
+        "description": "Por favor, seleccione el continente de la zona que desea monitorizar.",
+        "data": { "continent": "Continente" }
+      },
+      "country": {
+        "title": "Seleccionar País",
+        "description": "Por favor, seleccione el país donde se encuentra la zona.",
+        "data": { "country": "País" }
+      },
+      "place": {
+        "title": "Seleccionar Lugar",
+        "description": "Por favor, seleccione el lugar que desea monitorizar.",
+        "data": { "place": "Lugar" }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo conectar a seatemperatures.net. Por favor, compruebe su conexión a internet.",
+      "unknown": "Error inesperado."
+    },
+    "abort": {
+      "already_configured": "Este lugar ya está configurado."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "today": { "name": "Hoy" },
+      "yesterday": { "name": "Ayer" },
+      "last_week": { "name": "Semana Pasada" },
+      "last_year": { "name": "Año Pasado" },
+      "average_avg": { "name": "Temperatura Media" },
+      "average_min": { "name": "Media Mínima" },
+      "average_max": { "name": "Media Máxima" }
+    }
+  }
+}

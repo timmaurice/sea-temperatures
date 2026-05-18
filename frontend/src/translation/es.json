@@ -1,0 +1,41 @@
+{
+  "editor": {
+    "groups": { "display": "Pantalla" },
+    "title": "Título (Opcional)",
+    "places": "Lugares",
+    "show_trend": "Mostrar indicadores de tendencia (vs Ayer)",
+    "show_last_updated": "Mostrar última actualización",
+    "show_stats": "Mostrar estadísticas (Ayer, Semana pasada, Año pasado)",
+    "show_chart": "Mostrar gráfico histórico (30d)",
+    "show_country": "Añadir el país al nombre del lugar",
+    "chart_smoothing": "Suavizado del gráfico",
+    "chart_smoothing_options": {
+      "smooth": "Suave",
+      "linear": "Lineal",
+      "step": "Escalonado"
+    },
+    "sort_by": "Ordenar lugares por",
+    "sort_by_options": {
+      "default": "Por defecto (Manual)",
+      "name": "Nombre (A-Z)",
+      "temp_asc": "Temperatura (Más frío primero)",
+      "temp_desc": "Temperatura (Más cálido primero)"
+    },
+    "add_place": "Añadir Lugar"
+  },
+  "card": {
+    "yesterday": "Ayer",
+    "last_week": "Semana Pasada",
+    "last_year": "Año Pasado",
+    "averages": "Medias",
+    "min": "Mín",
+    "max": "Máx",
+    "avg": "Med"
+  },
+  "common": {
+    "errors": {
+      "no_places": "Debes definir al menos un lugar.",
+      "duplicate_place": "Este lugar ya está en tu lista."
+    }
+  }
+}

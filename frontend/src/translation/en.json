@@ -5,25 +5,39 @@
     },
     "title": "Title (Optional)",
     "places": "Places",
-    "show_trend": "Show trend indicators (24h)",
+    "show_trend": "Show trend indicators (vs Yesterday)",
     "show_last_updated": "Show last updated",
     "show_stats": "Show statistics (Yesterday, Last Week, Last Year)",
     "show_chart": "Show historical chart (30d)",
-    "chart_smoothing": "Chart smoothing"
+    "show_country": "Append country to place name",
+    "chart_smoothing": "Chart smoothing",
+    "chart_smoothing_options": {
+      "smooth": "Smooth",
+      "linear": "Linear",
+      "step": "Step"
+    },
+    "sort_by": "Sort places by",
+    "sort_by_options": {
+      "default": "Default (Manual)",
+      "name": "Name (A-Z)",
+      "temp_asc": "Temperature (Coldest First)",
+      "temp_desc": "Temperature (Warmest First)"
+    },
+    "add_place": "Add Place"
   },
   "card": {
-    "place_not_found": "Place not found: {place}"
+    "yesterday": "Yesterday",
+    "last_week": "Last Week",
+    "last_year": "Last Year",
+    "averages": "Averages",
+    "min": "Min",
+    "max": "Max",
+    "avg": "Avg"
   },
   "common": {
     "errors": {
-      "no_places": "You need to define at least one place."
+      "no_places": "You need to define at least one place.",
+      "duplicate_place": "This place is already in your list."
     }
-  },
-  "yesterday": "Yesterday",
-  "last_week": "Last Week",
-  "last_year": "Last Year",
-  "averages": "Averages",
-  "min": "Min",
-  "max": "Max",
-  "avg": "Avg"
+  }
 }

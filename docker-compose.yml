@@ -1,12 +1,12 @@
 services:
   homeassistant:
     container_name: homeassistant-test
-    image: "ghcr.io/home-assistant/home-assistant:stable"
+    image: 'ghcr.io/home-assistant/home-assistant:stable'
     volumes:
       - ./test_config:/config
       - ./custom_components/seatemperatures:/config/custom_components/seatemperatures
       - /etc/localtime:/etc/localtime:ro
     ports:
-      - "8124:8123"
+      - '8124:8123'
     restart: unless-stopped
     privileged: true

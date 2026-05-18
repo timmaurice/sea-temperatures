@@ -9,8 +9,10 @@ htmlcov/
 *.DS_Store
 
 # Local testing setup
-config/
-!config/custom_components/seatemperatures
+test_config/*
+!test_config/configuration.yaml
+!test_config/ui-lovelace.yaml
+LOCAL_LOGIN.md
 
 # OS / IDE
 .DS_Store
@@ -18,3 +20,13 @@ config/
 
 # AI context (optional: keep if you want to commit it)
 GEMINI.md
+
+# Frontend Dependencies
+/node_modules
+
+# Lockfiles for other package managers
+bun.lock
+yarn.lock
+
+# Backups
+*.bak

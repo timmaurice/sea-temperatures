@@ -21,3 +21,58 @@
 ha-form {
   display: block;
 }
+
+.places-list {
+  border: 1px solid var(--divider-color);
+  border-radius: var(--ha-card-border-radius, 12px);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.places-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--primary-text-color);
+  }
+}
+
+.places {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.place-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  ha-selector {
+    flex: 1;
+  }
+}
+
+.handle {
+  cursor: grab;
+  color: var(--secondary-text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.add-place-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}

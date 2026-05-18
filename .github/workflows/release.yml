@@ -6,7 +6,7 @@ env:
 on:
   push:
     tags:
-      - "*"
+      - '*'
 
 jobs:
   release:
@@ -28,15 +28,15 @@ jobs:
           # Remove 'v' prefix if present (e.g., v1.2.0 -> 1.2.0)
           CLEAN_VERSION=${VERSION#v}
           echo "Setting versions to $CLEAN_VERSION"
-          
+
           # Update Home Assistant manifest
           jq ".version = \"$CLEAN_VERSION\"" custom_components/seatemperatures/manifest.json > tmp.json && mv tmp.json custom_components/seatemperatures/manifest.json
-          
+
           # Update pyproject.toml
           sed -i "s/^version = \".*\"/version = \"$CLEAN_VERSION\"/" pyproject.toml
-          
-          # Update frontend package.json
-          cd frontend && npm version $CLEAN_VERSION --no-git-tag-version --allow-same-version
+
+          # Update package.json
+          npm version $CLEAN_VERSION --no-git-tag-version --allow-same-version
 
       # 4. Setup Node and Build Frontend
       - name: Setup Node.js
@@ -44,7 +44,6 @@ jobs:
 
       - name: Build frontend
         run: |
-          cd frontend
           npm ci
           npm run build
 
@@ -53,7 +52,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add pyproject.toml custom_components/seatemperatures/manifest.json frontend/package.json frontend/package-lock.json custom_components/seatemperatures/sea-temperatures-card.js
+          git add pyproject.toml custom_components/seatemperatures/manifest.json package.json package-lock.json custom_components/seatemperatures/sea-temperatures-card.js
           git commit -m "chore: release ${{ env.VERSION }} [skip ci]" || echo "No changes to commit"
           git push origin HEAD:main
           git tag -f ${{ env.VERSION }}
@@ -74,7 +73,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref }}
-          name: "Version ${{ env.VERSION }}"
+          name: 'Version ${{ env.VERSION }}'
           draft: true
           generate_release_notes: true
           files: sea-temperatures.zip

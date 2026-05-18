@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: './test/setup.ts',
-    alias: { '\\.scss$': './test/styleMock.ts' },
+    setupFiles: './frontend/test/setup.ts',
+    alias: { '\\.scss$': './frontend/test/styleMock.ts' },
   },
 });

@@ -10,12 +10,12 @@
     "useDefineForClassFields": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "../custom_components/seatemperatures",
+    "outDir": "custom_components/seatemperatures",
     "declaration": false,
     "sourceMap": true,
     "lib": ["ES2022", "DOM"],
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "src/declarations.d.ts"],
+  "include": ["frontend/src/**/*.ts", "frontend/test/**/*.ts", "vitest.config.ts", "frontend/src/declarations.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

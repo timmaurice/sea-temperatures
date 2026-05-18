@@ -277,19 +277,12 @@ describe('SeaTemperaturesCard', () => {
       // For this to show we need history fetched (which sets _historyState)
       const cardEnabled = await setupCard({ show_trend: true });
 
-      // Manually inject history state since fetchHistory is async and potentially mocked
-      (cardEnabled as unknown as CardTestHarness)._historyState = { 'sensor.sea_temp_sensor': '20.0' }; // current is 21.0, so trending up
-      await cardEnabled.updateComplete;
-
-      expect(cardEnabled.shadowRoot?.querySelector('.trend-icon')).not.toBeNull();
-      expect(cardEnabled.shadowRoot?.querySelector('.trend-icon.up')).not.toBeNull();
+      expect(cardEnabled.shadowRoot?.querySelector('.current-trend')).not.toBeNull();
+      expect(cardEnabled.shadowRoot?.querySelector('.current-trend.pos')).not.toBeNull();
       cardEnabled.remove();
 
       const cardDisabled = await setupCard({ show_trend: false });
-      (cardDisabled as unknown as CardTestHarness)._historyState = { 'sensor.sea_temp_sensor': '20.0' };
-      await cardDisabled.updateComplete;
-
-      expect(cardDisabled.shadowRoot?.querySelector('.trend-icon')).toBeNull();
+      expect(cardDisabled.shadowRoot?.querySelector('.current-trend')).toBeNull();
       cardDisabled.remove();
     });
 
@@ -308,6 +301,125 @@ describe('SeaTemperaturesCard', () => {
       const cardLinear = await setupCard({ show_chart: true, chart_smoothing: 'linear' });
       expect((cardLinear as unknown as { _config: SeaTemperaturesCardConfig })._config.chart_smoothing).toBe('linear');
       cardLinear.remove();
+    });
+
+    it('renders country name when show_country is true', async () => {
+      const card = await setupCard({ show_country: true });
+      // Add country to state attributes for testing - properly clone to trigger update
+      const oldState = card.hass.states['sensor.sea_temp_sensor'];
+      const hass = {
+        ...card.hass,
+        states: {
+          ...card.hass.states,
+          'sensor.sea_temp_sensor': {
+            ...oldState,
+            attributes: {
+              ...oldState.attributes,
+              country: 'Germany',
+            },
+          },
+        },
+      };
+      card.hass = hass as unknown as HomeAssistant;
+      await card.updateComplete;
+
+      const country = card.shadowRoot?.querySelector('.place-country');
+      expect(country).not.toBeNull();
+      expect(country?.textContent).toBe('Germany');
+      card.remove();
+    });
+
+    it('does not render country name when show_country is false', async () => {
+      const card = await setupCard({ show_country: false });
+      const oldState = card.hass.states['sensor.sea_temp_sensor'];
+      const hass = {
+        ...card.hass,
+        states: {
+          ...card.hass.states,
+          'sensor.sea_temp_sensor': {
+            ...oldState,
+            attributes: {
+              ...oldState.attributes,
+              country: 'Germany',
+            },
+          },
+        },
+      };
+      card.hass = hass as unknown as HomeAssistant;
+      await card.updateComplete;
+
+      const country = card.shadowRoot?.querySelector('.place-country');
+      expect(country).toBeNull();
+      card.remove();
+    });
+  });
+
+  describe('Data Sorting', () => {
+    const setupSortingTest = async (sortBy: string) => {
+      const card = new SeaTemperaturesCard();
+      const config: SeaTemperaturesCardConfig = {
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }, { device: 'device-2' }, { device: 'device-3' }],
+        sort_by: sortBy as any,
+      };
+
+      const hass = {
+        states: {
+          'sensor.a_temp': {
+            entity_id: 'sensor.a_temp',
+            state: '25.0',
+            attributes: { friendly_name: 'Zebra Beach' },
+          },
+          'sensor.b_temp': {
+            entity_id: 'sensor.b_temp',
+            state: '15.0',
+            attributes: { friendly_name: 'Apple Beach' },
+          },
+          'sensor.c_temp': {
+            entity_id: 'sensor.c_temp',
+            state: '20.0',
+            attributes: { friendly_name: 'Middle Beach' },
+          },
+        },
+        entities: {
+          'sensor.a_temp': { device_id: 'device-1' },
+          'sensor.b_temp': { device_id: 'device-2' },
+          'sensor.c_temp': { device_id: 'device-3' },
+        },
+        devices: {
+          'device-1': { id: 'device-1', name: 'Zebra Beach' },
+          'device-2': { id: 'device-2', name: 'Apple Beach' },
+          'device-3': { id: 'device-3', name: 'Middle Beach' },
+        },
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+
+      card.setConfig(config);
+      const data = (
+        card as unknown as { _getPlacesData: (h: HomeAssistant, c: SeaTemperaturesCardConfig) => any[] }
+      )._getPlacesData(hass, config);
+      return data;
+    };
+
+    it('sorts places by name', async () => {
+      const data = await setupSortingTest('name');
+      expect(data[0].name).toBe('Apple Beach');
+      expect(data[1].name).toBe('Middle Beach');
+      expect(data[2].name).toBe('Zebra Beach');
+    });
+
+    it('sorts places by temperature ascending', async () => {
+      const data = await setupSortingTest('temp_asc');
+      expect(data[0].temperature).toBe('15.0');
+      expect(data[1].temperature).toBe('20.0');
+      expect(data[2].temperature).toBe('25.0');
+    });
+
+    it('sorts places by temperature descending', async () => {
+      const data = await setupSortingTest('temp_desc');
+      expect(data[0].temperature).toBe('25.0');
+      expect(data[1].temperature).toBe('20.0');
+      expect(data[2].temperature).toBe('15.0');
     });
   });
 });

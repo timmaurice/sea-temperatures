@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+import aiohttp
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -25,7 +26,7 @@ class SeaTemperatureAPI:
             async with session.get(API_URL_PLACES) as response:
                 response.raise_for_status()
                 return await response.json()
-        except Exception as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.error("Error fetching places data: %s", err)
             return None
 
@@ -37,7 +38,7 @@ class SeaTemperatureAPI:
             async with session.get(url) as response:
                 response.raise_for_status()
                 return await response.json()
-        except Exception as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.error(
                 "Error fetching temperature data for place %s: %s", place_id, err
             )

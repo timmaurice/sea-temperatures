@@ -2,7 +2,7 @@ import { LitElement, TemplateResult, html, svg, unsafeCSS } from 'lit';
 import { property, state, query } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCard, LovelaceCardEditor, PlaceConfig, SeaTemperaturesCardConfig } from './types.js';
 import { localize } from './localize.js';
-import { fireEvent, fetchHistory } from './utils.js';
+import { fireEvent } from './utils.js';
 import { scaleTime, scaleLinear, line, area, curveMonotoneX, curveLinear, curveStepAfter, extent, bisector } from 'd3';
 import styles from './styles/card.styles.scss';
 
@@ -11,6 +11,7 @@ const EDITOR_ELEMENT_NAME = `${ELEMENT_NAME}-editor`;
 
 interface SeaTemperatureData {
   name: string;
+  country?: string;
   temperature: string;
   yesterday?: string;
   last_week?: string;
@@ -53,8 +54,9 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @query('ha-card') private _card!: LovelaceCard;
   @state() private _config!: SeaTemperaturesCardConfig;
-  @state() private _historyState: Record<string, string> = {}; // entity_id -> state 24h ago
   @state() private _chartData: Record<string, HistoryPoint[]> = {}; // entity_id -> history points
+  @state() private _chartWidth = 400;
+  private _resizeObserver?: ResizeObserver;
   private _dataFetched = false;
 
   public setConfig(config: SeaTemperaturesCardConfig): void {
@@ -66,11 +68,32 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       show_trend: true,
       show_stats: true,
       show_chart: true,
+      show_country: false,
       compact: false,
       chart_smoothing: 'smooth',
       ...config,
     };
     // Fetching will happen in updated() when hass is available
+  }
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    this._resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          const newWidth = Math.max(200, entry.contentRect.width - 32); // 32px is the card padding
+          if (this._chartWidth !== newWidth) {
+            this._chartWidth = newWidth;
+          }
+        }
+      }
+    });
+    this._resizeObserver.observe(this);
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._resizeObserver?.disconnect();
   }
 
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -127,8 +150,11 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       if (tempEntity) {
         const attr = tempEntity.attributes;
         const device = deviceId ? hass.devices[deviceId] : undefined;
+        const baseName = device?.name_by_user || device?.name || attr.friendly_name || 'Unknown';
+
         places.push({
-          name: customName || device?.name_by_user || device?.name || attr.friendly_name || 'Unknown',
+          name: customName || baseName,
+          country: config.show_country && attr.country ? String(attr.country) : undefined,
           temperature: tempEntity.state,
           yesterday: attr.yesterday ? String(attr.yesterday) : undefined,
           last_week: attr.last_week ? String(attr.last_week) : undefined,
@@ -143,6 +169,27 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       }
     });
 
+    if (config.sort_by) {
+      places.sort((a, b) => {
+        if (config.sort_by === 'name') {
+          return a.name.localeCompare(b.name);
+        }
+        if (config.sort_by === 'temp_asc' || config.sort_by === 'temp_desc') {
+          const tempA = parseFloat(a.temperature);
+          const tempB = parseFloat(b.temperature);
+          const valA = isNaN(tempA) ? -Infinity : tempA;
+          const valB = isNaN(tempB) ? -Infinity : tempB;
+
+          if (config.sort_by === 'temp_asc') {
+            return valA - valB;
+          } else {
+            return valB - valA;
+          }
+        }
+        return 0; // 'default'
+      });
+    }
+
     return places;
   }
 
@@ -152,9 +199,6 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     // We can only fetch history once we have both _config and hass
     if (this.hass && this._config && !this._dataFetched) {
       this._dataFetched = true;
-      if (this._config.show_trend) {
-        this._fetchHistory();
-      }
       this._fetchChartData();
     }
   }
@@ -168,19 +212,11 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       return (
         hasChanged ||
         oldHass.language !== this.hass.language ||
-        changedProperties.has('_historyState') ||
-        changedProperties.has('_chartData')
+        changedProperties.has('_chartData') ||
+        changedProperties.has('_chartWidth')
       );
     }
     return true;
-  }
-
-  private async _fetchHistory(): Promise<void> {
-    if (!this.hass || !this._config.places) return;
-    const places = this._getPlacesData(this.hass, this._config);
-    const entities = places.map((p) => p.entity_id);
-    if (entities.length === 0) return;
-    this._historyState = await fetchHistory(this.hass, entities, 24);
   }
 
   private _fetchChartData(): void {
@@ -241,17 +277,31 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     fireEvent(this, 'hass-more-info', { entityId });
   }
 
-  private _renderTrend(entityId: string, currentState: string): TemplateResult {
+  private _renderTrend(yesterday: string | undefined, currentState: string, unit: string = ''): TemplateResult {
     if (!this._config.show_trend) return html``;
-    const oldState = this._historyState[entityId];
+    const oldState = yesterday;
     if (oldState === undefined || isNaN(parseFloat(currentState)) || isNaN(parseFloat(oldState))) return html``;
 
     const currentVal = parseFloat(currentState);
     const oldVal = parseFloat(oldState);
 
-    if (currentVal > oldVal) return html`<ha-icon class="trend-icon up" icon="mdi:trending-up"></ha-icon>`;
-    if (currentVal < oldVal) return html`<ha-icon class="trend-icon down" icon="mdi:trending-down"></ha-icon>`;
-    return html`<ha-icon class="trend-icon same" icon="mdi:trending-neutral"></ha-icon>`;
+    const delta = currentVal - oldVal;
+    const roundedDelta = Math.round(delta * 10) / 10;
+
+    if (Math.abs(roundedDelta) > 0) {
+      const isPos = roundedDelta > 0;
+      const deltaFormatted = new Intl.NumberFormat(this.hass?.language, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }).format(Math.abs(roundedDelta));
+      const deltaClass = isPos ? 'pos' : 'neg';
+      const deltaIcon = isPos ? '↑' : '↓';
+      const deltaSign = isPos ? '+' : '-';
+      return html`<div class="stat-delta ${deltaClass} current-trend">
+        ${deltaIcon} ${deltaSign}${deltaFormatted}${unit}
+      </div>`;
+    }
+    return html`<div class="stat-delta neu current-trend">→ 0.0${unit}</div>`;
   }
 
   protected render(): TemplateResult {
@@ -267,7 +317,10 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
               <div class="place-row">
                 <div class="place-header" @click=${() => this._handleMoreInfo(place.entity_id)}>
                   <div class="place-info">
-                    <span class="place-name">${place.name}</span>
+                    <div class="place-name-container">
+                      <span class="place-name">${place.name}</span>
+                      ${place.country ? html`<span class="place-country">${place.country}</span>` : ''}
+                    </div>
                     ${this._config.show_last_updated
                       ? html`<div class="last-updated">
                           ${this.hass.states[place.entity_id]
@@ -286,16 +339,16 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                         : place.temperature}</span
                     >
                     <span class="temp-unit">${place.unit}</span>
-                    ${this._renderTrend(place.entity_id, place.temperature)}
+                    ${this._renderTrend(place.yesterday, place.temperature, place.unit)}
                   </div>
                 </div>
 
                 ${this._config.show_stats !== false
                   ? html`
                       <div class="stats-grid">
-                        ${this._renderStat(localize(this.hass, 'yesterday'), place.yesterday, place.unit)}
-                        ${this._renderStat(localize(this.hass, 'last_week'), place.last_week, place.unit)}
-                        ${this._renderStat(localize(this.hass, 'last_year'), place.last_year, place.unit)}
+                        ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
+                        ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
+                        ${this._renderStat(localize(this.hass, 'card.last_year'), place.last_year, place.unit)}
                       </div>
                     `
                   : ''}
@@ -310,9 +363,9 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
 
   private _renderStat(label: string, value?: string, unit?: string): TemplateResult {
     if (!value || value === 'unknown' || value === 'unavailable') return html``;
-    const formattedVal = !isNaN(Number(value))
-      ? new Intl.NumberFormat(this.hass?.language).format(Number(value))
-      : value;
+    const numVal = Number(value);
+    const formattedVal = !isNaN(numVal) ? new Intl.NumberFormat(this.hass?.language).format(numVal) : value;
+
     return html`
       <div class="stat-item">
         <span class="stat-label">${label}</span>
@@ -323,17 +376,15 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
 
   private _renderChart(place: SeaTemperatureData): TemplateResult {
     const data = this._chartData[place.entity_id];
-    console.log(`[SeaTempCard] _renderChart for ${place.entity_id}:`, data);
 
     if (!data || data.length < 2) {
-      console.log(`[SeaTempCard] Aborting render for ${place.entity_id}. Data is empty or < 2 points.`);
       return html``;
     }
 
     return html`
       <div class="chart-container">
         <svg
-          viewBox="0 0 400 120"
+          viewBox="0 0 ${this._chartWidth} 120"
           preserveAspectRatio="xMidYMid meet"
           id="chart-${place.entity_id.replace(/\./g, '-')}"
         >
@@ -380,7 +431,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     const hoverGroup = svgNode.querySelector(`.hover-group`) as SVGGElement | null;
     if (!hoverGroup) return;
 
-    hoverGroup.style.display = 'block';
+    hoverGroup.style.opacity = '1';
 
     const hx = x(closestPoint.date);
     const hy = y(closestPoint.value);
@@ -397,31 +448,19 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     const textVal = hoverGroup.querySelector('.hover-tooltip-text') as SVGTextElement;
     const textDate = hoverGroup.querySelector('.hover-tooltip-date') as SVGTextElement;
 
-    const width = 400;
-    let tooltipX = hx;
-    let textAnchor = 'middle';
-    if (hx < 40) {
-      tooltipX = hx + 10;
-      textAnchor = 'start';
-    } else if (hx > width - 40) {
-      tooltipX = hx - 10;
-      textAnchor = 'end';
-    }
-
+    const width = this._chartWidth;
     const tooltipBgWidth = 70;
-    let tooltipRectX = tooltipX - tooltipBgWidth / 2;
-    if (textAnchor === 'start') tooltipRectX = tooltipX - 5;
-    else if (textAnchor === 'end') tooltipRectX = tooltipX - tooltipBgWidth + 5;
 
-    let tooltipY = hy - 34;
-    let textLine1Y = hy - 23;
-    let textLine2Y = hy - 11;
+    // Bound the background rect within the SVG width
+    const tooltipRectX = Math.max(0, Math.min(hx - tooltipBgWidth / 2, width - tooltipBgWidth));
 
-    if (hy < 40) {
-      tooltipY = hy + 10;
-      textLine1Y = hy + 21;
-      textLine2Y = hy + 33;
-    }
+    // The text should always be exactly in the center of the background rect
+    const tooltipX = tooltipRectX + tooltipBgWidth / 2;
+    const textAnchor = 'middle';
+
+    const tooltipY = Math.max(0, hy - 34);
+    const textLine1Y = tooltipY + 11;
+    const textLine2Y = tooltipY + 23;
 
     bg.setAttribute('x', String(tooltipRectX));
     bg.setAttribute('y', String(tooltipY));
@@ -446,12 +485,12 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     if (!svgNode) return;
     const hoverGroup = svgNode.querySelector(`.hover-group`) as SVGGElement | null;
     if (hoverGroup) {
-      hoverGroup.style.display = 'none';
+      hoverGroup.style.opacity = '0';
     }
   }
 
   private _drawChart(entityId: string, data: HistoryPoint[], place: SeaTemperatureData): TemplateResult {
-    const width = 400;
+    const width = this._chartWidth;
     const height = 120;
     const margin = { top: 15, right: 65, bottom: 25, left: 10 };
 
@@ -529,7 +568,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     const unitStr = place.unit || '°C';
 
     const hoverElements = svg`
-      <g class="hover-group" style="display: none;">
+      <g class="hover-group" style="opacity: 0;">
         <line class="hover-line" x1="0" x2="0" y1="${margin.top}" y2="${height - margin.bottom}"></line>
         <circle class="hover-point" cx="0" cy="0" r="4"></circle>
         <rect class="hover-tooltip-bg" x="0" y="0" width="70" height="28" rx="4"></rect>

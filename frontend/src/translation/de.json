@@ -5,25 +5,39 @@
     },
     "title": "Titel (Optional)",
     "places": "Orte",
-    "show_trend": "Zeige Trend-Indikatoren (24h)",
+    "show_trend": "Zeige Trend-Indikatoren (vs Gestern)",
     "show_last_updated": "Zuletzt aktualisiert anzeigen",
     "show_stats": "Statistiken anzeigen (Gestern, Letzte Woche, Letztes Jahr)",
     "show_chart": "Historisches Diagramm anzeigen (30t)",
-    "chart_smoothing": "Kurvenglättung"
+    "show_country": "Land an den Ortsnamen anhängen",
+    "chart_smoothing": "Kurvenglättung",
+    "chart_smoothing_options": {
+      "smooth": "Weich",
+      "linear": "Linear",
+      "step": "Stufen"
+    },
+    "sort_by": "Orte sortieren nach",
+    "sort_by_options": {
+      "default": "Standard (Manuell)",
+      "name": "Name (A-Z)",
+      "temp_asc": "Temperatur (Kälteste zuerst)",
+      "temp_desc": "Temperatur (Wärmste zuerst)"
+    },
+    "add_place": "Ort hinzufügen"
   },
   "card": {
-    "place_not_found": "Ort nicht gefunden: {place}"
+    "yesterday": "Gestern",
+    "last_week": "Letzte Woche",
+    "last_year": "Letztes Jahr",
+    "averages": "Durchschnitte",
+    "min": "Min",
+    "max": "Max",
+    "avg": "Ø"
   },
   "common": {
     "errors": {
-      "no_places": "Du musst mindestens einen Ort definieren."
+      "no_places": "Du musst mindestens einen Ort definieren.",
+      "duplicate_place": "Dieser Ort ist bereits in deiner Liste."
     }
-  },
-  "yesterday": "Gestern",
-  "last_week": "Letzte Woche",
-  "last_year": "Letztes Jahr",
-  "averages": "Durchschnitte",
-  "min": "Min",
-  "max": "Max",
-  "avg": "Avg"
+  }
 }

@@ -5,20 +5,20 @@ env:
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
   schedule:
-    - cron: "0 0 * * *" # Runs daily
+    - cron: '0 0 * * *' # Runs daily
 
 jobs:
   validate:
     name: HACS Validation
-    runs-on: "ubuntu-latest"
+    runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout code
-        uses: "actions/checkout@v6"
+        uses: 'actions/checkout@v6'
       - name: HACS Validation
-        uses: "hacs/action@main"
+        uses: 'hacs/action@main'
         with:
-          category: "integration"
+          category: 'integration'

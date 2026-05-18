@@ -12,7 +12,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts'],
+    files: ['frontend/src/**/*.ts'],
     plugins: {
       lit: litPlugin,
       wc: wcPlugin,

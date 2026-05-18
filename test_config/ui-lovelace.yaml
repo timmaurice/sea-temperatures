@@ -4,7 +4,7 @@ views:
     icon: mdi:waves
     cards:
       - type: custom:sea-temperatures-card
-        title: "Sea Temperatures (Configure Integration First)"
+        title: "Sea Temperatures"
         show_trend: true
         show_last_updated: true
         show_stats: true

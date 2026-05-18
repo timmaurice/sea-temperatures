@@ -23,12 +23,14 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Sea Temperature."""
 
     VERSION = 1
-    _places_data: dict[str, Any] | None = None
-    _continents: list[str] = []
-    _countries: list[str] = []
-    _places: dict[str, Any] = {}
 
-    _data: dict[str, Any] = {}
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._places_data: dict[str, Any] | None = None
+        self._continents: list[str] = []
+        self._countries: list[str] = []
+        self._places: dict[str, Any] = {}
+        self._data: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -67,17 +69,16 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the country selection step."""
         continent = self._data[CONF_CONTINENT]
 
-        if not self._countries:
-            # Extract countries for selected continent
-            self._countries = sorted(
-                list(
-                    set(
-                        p["country_name"]
-                        for p in self._places_data
-                        if p["continent_name"] == continent
-                    )
+        # Always extract countries to handle back navigation correctly
+        self._countries = sorted(
+            list(
+                set(
+                    p["country_name"]
+                    for p in self._places_data
+                    if p["continent_name"] == continent
                 )
             )
+        )
 
         if user_input is not None:
             self._data[CONF_COUNTRY] = user_input[CONF_COUNTRY]
@@ -101,20 +102,19 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         continent = self._data[CONF_CONTINENT]
         country = self._data[CONF_COUNTRY]
 
-        if not self._places:
-            # Extract places for selected country/continent
-            places_list = [
-                p
-                for p in self._places_data
-                if p["continent_name"] == continent and p["country_name"] == country
-            ]
-            self._places = {p["place_name"]: p["id"] for p in places_list}
-            _LOGGER.debug(
-                "Populated self._places for %s, %s: %s",
-                continent,
-                country,
-                self._places,
-            )
+        # Always extract places for selected country/continent
+        places_list = [
+            p
+            for p in self._places_data
+            if p["continent_name"] == continent and p["country_name"] == country
+        ]
+        self._places = {p["place_name"]: p["id"] for p in places_list}
+        _LOGGER.debug(
+            "Populated self._places for %s, %s: %s",
+            continent,
+            country,
+            self._places,
+        )
 
         if user_input is not None:
             place_name = user_input[CONF_PLACE]
@@ -141,4 +141,5 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="place",
             data_schema=data_schema,
+            last_step=True,
         )

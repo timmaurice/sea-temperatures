@@ -46,6 +46,7 @@ export interface HassEntityRegistryDisplayEntry {
   display_precision?: number;
   device_id?: string;
   domain?: string;
+  platform?: string;
 }
 
 // A basic representation of a Lovelace card
@@ -72,9 +73,11 @@ export type PlaceConfig = string | { device: string; name?: string };
 export interface SeaTemperaturesCardConfig extends LovelaceCardConfig {
   places: PlaceConfig[];
   title?: string;
+  sort_by?: 'default' | 'name' | 'temp_asc' | 'temp_desc';
   show_last_updated?: boolean;
   show_trend?: boolean;
   show_stats?: boolean;
   show_chart?: boolean;
+  show_country?: boolean;
   chart_smoothing?: 'smooth' | 'linear' | 'step';
 }

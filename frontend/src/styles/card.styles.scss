@@ -1,6 +1,10 @@
 $min-color: #41bdf5;
 $max-color: #ff9800;
 
+:host {
+  display: block;
+}
+
 :host ::slotted(.card-content),
 .card-content {
   display: flex;
@@ -83,10 +87,22 @@ $max-color: #ff9800;
   margin-top: 4px;
 }
 
+.place-name-container {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .place-name {
   font-size: 1.2rem;
   font-weight: 500;
   color: var(--primary-text-color);
+}
+
+.place-country {
+  font-size: 0.85rem;
+  color: var(--secondary-text-color);
+  font-weight: 400;
 }
 
 .current-temp {
@@ -137,6 +153,24 @@ $max-color: #ff9800;
   font-weight: 600;
 }
 
+.stat-delta {
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 2px;
+
+  &.pos {
+    color: var(--success-color, #4caf50);
+  }
+
+  &.neg {
+    color: var(--error-color, #db4437);
+  }
+
+  &.neu {
+    color: var(--secondary-text-color);
+  }
+}
+
 .averages-section {
   margin-top: 16px;
   padding-top: 12px;
@@ -151,20 +185,10 @@ $max-color: #ff9800;
   text-align: center;
 }
 
-.trend-icon {
-  --mdc-icon-size: 24px;
-
-  &.up {
-    color: $max-color;
-  }
-
-  &.down {
-    color: $min-color;
-  }
-
-  &.same {
-    color: var(--secondary-text-color);
-  }
+.current-trend {
+  font-size: 1rem;
+  margin-left: 8px;
+  margin-top: 0;
 }
 
 .warning {
@@ -212,6 +236,7 @@ $max-color: #ff9800;
 
 .hover-group {
   pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
 }
 
 .hover-line {
@@ -242,8 +267,7 @@ $max-color: #ff9800;
 }
 
 .hover-tooltip-date {
-  fill: var(--text-primary-color, #fff);
-  opacity: 0.8;
+  fill: var(--secondary-text-color);
   font-size: 8px;
 }
 
