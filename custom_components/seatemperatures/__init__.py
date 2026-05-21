@@ -8,8 +8,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from .api import SeaTemperatureAPI
-from .const import CONF_PLACE, CONF_PLACE_ID, DOMAIN
+from .const import (
+    CONF_AREA,
+    CONF_CONTINENT,
+    CONF_COUNTRY,
+    CONF_PATH,
+    CONF_PLACE,
+    CONF_PLACE_ID,
+    DOMAIN,
+)
 
 PLATFORMS = [Platform.SENSOR]
 SCAN_INTERVAL = timedelta(hours=2)  # Sea temperatures don't change frequently
@@ -88,21 +97,68 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate legacy config entries from place IDs to path-based locations."""
+    if entry.version > 2:
+        _LOGGER.error("Unsupported SeaTemperatures config entry version: %s", entry.version)
+        return False
+
+    if entry.version < 2:
+        _LOGGER.debug("Migrating SeaTemperatures entry %s from version %s", entry.entry_id, entry.version)
+
+        data = dict(entry.data)
+        location_path = data.get(CONF_PATH)
+        if not location_path:
+            place_id = data.get(CONF_PLACE_ID)
+            if not place_id:
+                _LOGGER.error(
+                    "SeaTemperatures entry %s has no place_id to migrate. Remove and re-add the integration.",
+                    entry.entry_id,
+                )
+                return False
+
+            location = await SeaTemperatureAPI(hass).get_location_by_place_id(place_id)
+            if location is None:
+                _LOGGER.error(
+                    "SeaTemperatures place_id %s could not be mapped to a current location path. Remove and re-add the integration.",
+                    place_id,
+                )
+                return False
+
+            data[CONF_PATH] = location[CONF_PATH]
+            data[CONF_PLACE] = location.get("name", data.get(CONF_PLACE, "Unknown"))
+            data[CONF_COUNTRY] = location.get(CONF_COUNTRY, data.get(CONF_COUNTRY, ""))
+            data[CONF_AREA] = location.get(CONF_AREA, data.get(CONF_AREA, ""))
+            data.setdefault(CONF_CONTINENT, data.get(CONF_CONTINENT, ""))
+
+        hass.config_entries.async_update_entry(
+            entry,
+            data=data,
+            unique_id=data[CONF_PATH],
+            version=2,
+        )
+
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Sea Temperature from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
     place_name = entry.data.get(CONF_PLACE, "Unknown")
-    place_id = entry.data.get(CONF_PLACE_ID)
+    location_path = entry.data.get(CONF_PATH)
+    location_key = entry.data.get(CONF_PLACE_ID) or location_path or entry.entry_id
 
     api = SeaTemperatureAPI(hass)
 
     async def async_update_data():
         """Fetch data from API."""
-        if not place_id:
-            raise UpdateFailed("No place ID configured.")
+        if not location_path:
+            raise UpdateFailed(
+                "No location path configured. Remove and re-add the integration."
+            )
 
-        data = await api.get_temperatures(place_id)
+        data = await api.get_temperatures(location_path)
         if not data:
             raise UpdateFailed(f"Failed to fetch data for place {place_name}")
 
@@ -111,7 +167,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
-        name=f"seatemperatures_{place_id}",
+        name=f"seatemperatures_{location_key}",
         update_method=async_update_data,
         update_interval=SCAN_INTERVAL,
     )

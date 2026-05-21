@@ -2,29 +2,24 @@
   "config": {
     "step": {
       "user": {
-        "title": "Select Continent",
-        "description": "Please select the continent for the area you want to monitor.",
+        "title": "Search Location",
+        "description": "Search SeaTemperatures.net for the location you want to monitor.",
         "data": {
-          "continent": "Continent"
+          "query": "Search"
         }
       },
-      "country": {
-        "title": "Select Country",
-        "description": "Please select the country the area is located in.",
+      "select": {
+        "title": "Select Location",
+        "description": "Choose the matching result for \"{query}\".",
         "data": {
-          "country": "Country"
-        }
-      },
-      "place": {
-        "title": "Select Place",
-        "description": "Please select the place you want to monitor.",
-        "data": {
-          "place": "Place"
+          "place": "Location"
         }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to seatemperatures.net. Please check your internet connection.",
+      "invalid_query": "Enter a location to search for.",
+      "no_results": "No SeaTemperatures.net locations matched that search.",
       "unknown": "Unexpected error."
     },
     "abort": {

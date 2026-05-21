@@ -20,7 +20,8 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import slugify
 
-from .const import CONF_PLACE, CONF_PLACE_ID, DOMAIN
+from .const import BASE_URL, CONF_AREA, CONF_PATH, CONF_PLACE, CONF_PLACE_ID, DOMAIN
+from .parser import validate_location_path
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,14 +86,16 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         self.entity_description = description
         self._entry = entry
         self._place_name = entry.data.get(CONF_PLACE, "Unknown")
-        self._place_id = entry.data[CONF_PLACE_ID]
+        self._location_key = entry.data.get(CONF_PLACE_ID) or entry.data.get(CONF_PATH)
+        if self._location_key is None:
+            self._location_key = self._place_name
 
         # Set friendly name
         self._attr_name = "Temperature"
 
         place_prefix = slugify(self._place_name)
 
-        self._attr_unique_id = f"{DOMAIN}_{self._place_id}_{description.key}"
+        self._attr_unique_id = f"{DOMAIN}_{self._location_key}_{description.key}"
         self.entity_id = f"sensor.{DOMAIN}_{place_prefix}_{description.key}"
 
     @property
@@ -143,29 +146,25 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
 
         attrs["continent"] = self._entry.data.get("continent", "")
         attrs["country"] = self._entry.data.get("country", "")
+        attrs["area"] = self._entry.data.get(CONF_AREA, "")
         attrs["place"] = self._place_name
+        attrs["path"] = self._entry.data.get(CONF_PATH, "")
 
         return attrs if attrs else None
 
     @property
     def device_info(self):
         """Return device information."""
-        continent = self._entry.data.get("continent", "")
-        country = self._entry.data.get("country", "")
-        place = self._entry.data.get("place", "")
-
-        url = "https://seatemperatures.net"
-        if continent and country and place:
-            import re
-
-            def slugify(text: str) -> str:
-                text = text.lower().replace("&", "and").replace("/", " and ")
-                return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
-
-            url = f"{url}/{slugify(continent)}/{slugify(country)}/{slugify(place)}/"
+        url = BASE_URL
+        location_path = self._entry.data.get(CONF_PATH)
+        if location_path:
+            try:
+                url = f"{BASE_URL}{validate_location_path(location_path)}"
+            except ValueError:
+                _LOGGER.debug("Invalid configuration URL path for %s", self._place_name)
 
         return {
-            "identifiers": {(DOMAIN, self._place_id)},
+            "identifiers": {(DOMAIN, self._location_key)},
             "name": self._place_name,
             "manufacturer": "Sea Temperatures",
             "model": "Sea Temperature Monitor",
