@@ -31,7 +31,7 @@ describe('SeaTemperaturesCard', () => {
       const card = new SeaTemperaturesCard();
       expect(() =>
         card.setConfig({ type: 'custom:sea-temperatures-card' } as unknown as SeaTemperaturesCardConfig),
-      ).toThrow("Please define 'places'");
+      ).toThrow('You need to define at least one place.');
     });
 
     it('prioritizes entities with historical attributes', () => {
@@ -207,7 +207,7 @@ describe('SeaTemperaturesCard', () => {
               unit_of_measurement: '°C',
               yesterday: '20.5',
               last_week: '19.0',
-              last_year: '18.0',
+              average_avg: '18.0',
               charts: {
                 last_thirty: {
                   labels: ['03-12', '03-13'],

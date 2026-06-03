@@ -7,7 +7,7 @@
     "places": "Orte",
     "show_trend": "Zeige Trend-Indikatoren (vs Gestern)",
     "show_last_updated": "Zuletzt aktualisiert anzeigen",
-    "show_stats": "Statistiken anzeigen (Gestern, Letzte Woche, Letztes Jahr)",
+    "show_stats": "Statistiken anzeigen (Gestern, Letzte Woche, 10-Jahres-Ø)",
     "show_chart": "Historisches Diagramm anzeigen (30t)",
     "show_country": "Land an den Ortsnamen anhängen",
     "chart_smoothing": "Kurvenglättung",
@@ -28,7 +28,7 @@
   "card": {
     "yesterday": "Gestern",
     "last_week": "Letzte Woche",
-    "last_year": "Letztes Jahr",
+    "average_avg": "10-Jahres-Ø",
     "averages": "Durchschnitte",
     "min": "Min",
     "max": "Max",

@@ -2,20 +2,23 @@
   "config": {
     "step": {
       "user": {
-        "title": "Rechercher un lieu",
-        "description": "Recherchez sur SeaTemperatures.net le lieu que vous souhaitez surveiller.",
-        "data": { "query": "Recherche" }
+        "title": "Sélectionner le continent",
+        "description": "Veuillez sélectionner le continent de la zone que vous souhaitez surveiller.",
+        "data": { "continent": "Continent" }
       },
-      "select": {
+      "country": {
+        "title": "Sélectionner le pays",
+        "description": "Veuillez sélectionner le pays où se trouve la zone.",
+        "data": { "country": "Pays" }
+      },
+      "place": {
         "title": "Sélectionner le lieu",
-        "description": "Choisissez le bon résultat pour \"{query}\".",
+        "description": "Veuillez sélectionner le lieu que vous souhaitez surveiller.",
         "data": { "place": "Lieu" }
       }
     },
     "error": {
       "cannot_connect": "Échec de la connexion à seatemperatures.net. Veuillez vérifier votre connexion Internet.",
-      "invalid_query": "Saisissez un lieu à rechercher.",
-      "no_results": "Aucun lieu SeaTemperatures.net ne correspond à cette recherche.",
       "unknown": "Erreur inattendue."
     },
     "abort": {

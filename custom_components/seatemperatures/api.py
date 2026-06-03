@@ -133,7 +133,10 @@ class SeaTemperatureAPI:
         if cache is None:
             return None
 
-        return cache.get(place_id)
+        location = cache.get(place_id)
+        if location is None and not place_id.startswith("sea-"):
+            location = cache.get(f"sea-{place_id}")
+        return location
 
     async def get_temperatures(self, location_path: str) -> dict[str, Any] | None:
         """Fetch temperature data for a specific location path."""

@@ -2,15 +2,22 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ort suchen",
-        "description": "Suchen Sie auf SeaTemperatures.net nach dem Ort, den Sie überwachen möchten.",
+        "title": "Kontinent auswählen",
+        "description": "Bitte wählen Sie den Kontinent für das Gebiet aus, das Sie überwachen möchten.",
         "data": {
-          "query": "Suche"
+          "continent": "Kontinent"
         }
       },
-      "select": {
+      "country": {
+        "title": "Land auswählen",
+        "description": "Bitte wählen Sie das Land aus, in dem sich das Gebiet befindet.",
+        "data": {
+          "country": "Land"
+        }
+      },
+      "place": {
         "title": "Ort auswählen",
-        "description": "Wählen Sie das passende Ergebnis für \"{query}\" aus.",
+        "description": "Bitte wählen Sie den Ort aus, den Sie überwachen möchten.",
         "data": {
           "place": "Ort"
         }
@@ -18,8 +25,6 @@
     },
     "error": {
       "cannot_connect": "Verbindung zu seatemperatures.net fehlgeschlagen. Bitte überprüfen Sie Ihre Internetverbindung.",
-      "invalid_query": "Geben Sie einen Ort für die Suche ein.",
-      "no_results": "Keine passenden Orte auf SeaTemperatures.net gefunden.",
       "unknown": "Unerwarteter Fehler."
     },
     "abort": {

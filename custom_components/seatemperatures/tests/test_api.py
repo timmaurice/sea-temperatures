@@ -12,7 +12,7 @@ from custom_components.seatemperatures.api import (
     parse_map_locations,
     parse_search_results,
 )
-from custom_components.seatemperatures.config_flow import QUERY_FIELD, SeaTemperatureConfigFlow
+from custom_components.seatemperatures.config_flow import SeaTemperatureConfigFlow
 from custom_components.seatemperatures.const import (
     CONF_AREA,
     CONF_CONTINENT,
@@ -225,36 +225,67 @@ async def test_get_location_by_place_id_uses_map_locations(mock_hass) -> None:
     }
 
 
+async def test_get_location_by_place_id_falls_back_to_sea_prefix(mock_hass) -> None:
+    """Numeric legacy IDs should resolve by prefixing sea-."""
+    api = SeaTemperatureAPI(mock_hass)
+    payload = {
+        "locations": [["sea-5484", "Acharavi", "Greece", "Corfu", "/europe/greece/acharavi/"]]
+    }
+
+    with patch(
+        "custom_components.seatemperatures.api.async_get_clientsession"
+    ) as mock_session:
+        mock_response = AsyncMock()
+        mock_response.json.return_value = payload
+        mock_response.raise_for_status = MagicMock()
+        mock_session.return_value.get.return_value.__aenter__.return_value = mock_response
+
+        result = await api.get_location_by_place_id("5484")
+
+    assert result == {
+        "name": "Acharavi",
+        "country": "Greece",
+        "area": "Corfu",
+        "path": "/europe/greece/acharavi/",
+    }
+
+
 async def test_config_flow_stores_path_based_location(mock_hass) -> None:
     """Config flow should store location metadata including the path."""
     flow = SeaTemperatureConfigFlow()
     flow.hass = mock_hass
 
-    search_results = [
-        {
+    locations_cache = {
+        "sea-1": {
             "name": "Miami Beach",
             "country": "United States",
-            "region": "North America",
             "area": "Florida, United States",
             "path": "/north-america/united-states/miami-beach/",
         }
-    ]
+    }
 
-    with patch.object(SeaTemperatureAPI, "search_locations", AsyncMock(return_value=search_results)):
-        user_result = await flow.async_step_user({QUERY_FIELD: "miami beach"})
+    with patch.object(SeaTemperatureAPI, "_get_map_locations", AsyncMock(return_value=locations_cache)):
+        user_result = await flow.async_step_user(None)
+        assert user_result["type"] == "form"
+        assert user_result["step_id"] == "user"
 
-    assert user_result["type"] == "form"
-    assert user_result["step_id"] == "select"
+        user_result = await flow.async_step_user({CONF_CONTINENT: "North America"})
+        assert user_result["type"] == "form"
+        assert user_result["step_id"] == "country"
 
-    with patch.object(flow, "async_set_unique_id", AsyncMock()), patch.object(
-        flow, "_abort_if_unique_id_configured", MagicMock()
-    ):
-        select_result = await flow.async_step_select(
-            {CONF_PLACE: "Miami Beach (Florida, United States)"}
-        )
+        country_result = await flow.async_step_country({CONF_COUNTRY: "United States"})
+        assert country_result["type"] == "form"
+        assert country_result["step_id"] == "place"
 
-    assert select_result["type"] == "create_entry"
-    assert select_result["data"] == {
+        with patch.object(flow, "async_set_unique_id", AsyncMock()), patch.object(
+            flow, "_abort_if_unique_id_configured", MagicMock()
+        ):
+            place_result = await flow.async_step_place(
+                {CONF_PLACE: "Miami Beach (Florida, United States)"}
+            )
+
+    assert place_result["type"] == "create_entry"
+    assert place_result["data"] == {
         CONF_CONTINENT: "North America",
         CONF_COUNTRY: "United States",
         CONF_AREA: "Florida, United States",

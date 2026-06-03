@@ -10,15 +10,14 @@ from homeassistant.data_entry_flow import FlowResult
 from .api import SeaTemperatureAPI
 from .const import (
     CONF_AREA,
-    DOMAIN,
     CONF_CONTINENT,
     CONF_COUNTRY,
-    CONF_PLACE,
     CONF_PATH,
+    CONF_PLACE,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
-QUERY_FIELD = "query"
 
 
 class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -28,113 +27,144 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._search_results: dict[str, dict[str, str]] = {}
+        self._locations_data: dict[str, dict[str, str]] | None = None
+        self._continents: list[str] = []
+        self._countries: list[str] = []
+        self._places: dict[str, dict[str, str]] = {}
         self._data: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Search for a location to configure."""
+        """Handle the initial step (fetch map locations and select continent)."""
         api = SeaTemperatureAPI(self.hass)
-        errors: dict[str, str] = {}
+
+        if self._locations_data is None:
+            self._locations_data = await api._get_map_locations()
+            if not self._locations_data:
+                return self.async_abort(reason="cannot_connect")
+
+            # Extract unique continents from path segments
+            continents_set = set()
+            for loc in self._locations_data.values():
+                path = loc.get("path", "")
+                parts = [p for p in path.split("/") if p]
+                if parts:
+                    continents_set.add(self._get_continent_name(parts[0]))
+            self._continents = sorted(list(continents_set))
 
         if user_input is not None:
-            query = user_input[QUERY_FIELD].strip()
-            if not query:
-                errors["base"] = "invalid_query"
-            else:
-                results = await api.search_locations(query)
-                if results is None:
-                    return self.async_abort(reason="cannot_connect")
-
-                self._search_results = self._build_result_map(results)
-                self._data[QUERY_FIELD] = query
-                if self._search_results:
-                    return await self.async_step_select()
-
-                errors["base"] = "no_results"
+            self._data[CONF_CONTINENT] = user_input[CONF_CONTINENT]
+            return await self.async_step_country()
 
         data_schema = vol.Schema(
             {
-                vol.Required(
-                    QUERY_FIELD,
-                    default=user_input[QUERY_FIELD] if user_input else "",
-                ): str,
+                vol.Required(CONF_CONTINENT): vol.In(self._continents),
             }
         )
 
         return self.async_show_form(
             step_id="user",
             data_schema=data_schema,
-            errors=errors,
         )
 
-    async def async_step_select(
+    async def async_step_country(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Select one of the search results."""
-        if not self._search_results:
-            return await self.async_step_user()
+        """Handle the country selection step."""
+        selected_continent = self._data[CONF_CONTINENT]
+
+        # Extract countries for the selected continent
+        countries_set = set()
+        for loc in self._locations_data.values():
+            path = loc.get("path", "")
+            parts = [p for p in path.split("/") if p]
+            if parts and self._get_continent_name(parts[0]) == selected_continent:
+                if loc.get("country"):
+                    countries_set.add(loc["country"])
+        self._countries = sorted(list(countries_set))
 
         if user_input is not None:
-            location = self._search_results[user_input[CONF_PLACE]]
-            await self.async_set_unique_id(location[CONF_PATH])
+            self._data[CONF_COUNTRY] = user_input[CONF_COUNTRY]
+            return await self.async_step_place()
+
+        data_schema = vol.Schema(
+            {
+                vol.Required(CONF_COUNTRY): vol.In(self._countries),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="country",
+            data_schema=data_schema,
+        )
+
+    async def async_step_place(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the place selection step."""
+        selected_continent = self._data[CONF_CONTINENT]
+        selected_country = self._data[CONF_COUNTRY]
+
+        # Extract places for selected country and continent
+        self._places = {}
+        for loc in self._locations_data.values():
+            path = loc.get("path", "")
+            parts = [p for p in path.split("/") if p]
+            if (
+                parts
+                and self._get_continent_name(parts[0]) == selected_continent
+                and loc.get("country") == selected_country
+            ):
+                place_name = loc["name"]
+                if loc.get("area"):
+                    place_name = f"{place_name} ({loc['area']})"
+                if place_name in self._places:
+                    place_name = f"{place_name} [{loc['path']}]"
+                self._places[place_name] = loc
+
+        if user_input is not None:
+            selected_label = user_input[CONF_PLACE]
+            location = self._places[selected_label]
+            await self.async_set_unique_id(location["path"])
             self._abort_if_unique_id_configured()
 
             return self.async_create_entry(
-                title=f"{location[CONF_PLACE]} Sea Temperature",
+                title=f"{location['name']} Sea Temperature",
                 data={
-                    CONF_CONTINENT: location.get(CONF_CONTINENT, ""),
-                    CONF_COUNTRY: location.get(CONF_COUNTRY, ""),
-                    CONF_AREA: location.get(CONF_AREA, ""),
-                    CONF_PLACE: location[CONF_PLACE],
-                    CONF_PATH: location[CONF_PATH],
+                    CONF_CONTINENT: selected_continent,
+                    CONF_COUNTRY: selected_country,
+                    CONF_AREA: location.get("area", ""),
+                    CONF_PLACE: location["name"],
+                    CONF_PATH: location["path"],
                 },
             )
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_PLACE): vol.In(list(self._search_results.keys())),
+                vol.Required(CONF_PLACE): vol.In(
+                    sorted(list(self._places.keys())) if self._places else []
+                ),
             }
         )
 
         return self.async_show_form(
-            step_id="select",
+            step_id="place",
             data_schema=data_schema,
-            description_placeholders={QUERY_FIELD: self._data.get(QUERY_FIELD, "")},
             last_step=True,
         )
 
-    def _build_result_map(
-        self, results: list[dict[str, str]]
-    ) -> dict[str, dict[str, str]]:
-        """Build a stable label -> location mapping for flow selection."""
-        mapped_results: dict[str, dict[str, str]] = {}
-        for result in results:
-            label = self._format_result_label(result)
-            if label in mapped_results:
-                label = f"{label} [{result[CONF_PATH]}]"
-
-            mapped_results[label] = {
-                CONF_CONTINENT: result.get("region", ""),
-                CONF_COUNTRY: result.get("country", ""),
-                CONF_AREA: result.get("area", ""),
-                CONF_PLACE: result["name"],
-                CONF_PATH: result["path"],
-            }
-
-        _LOGGER.debug("Search results mapped for selection: %s", mapped_results)
-        return mapped_results
-
-    @staticmethod
-    def _format_result_label(result: dict[str, str]) -> str:
-        """Format a search result for display in the config flow."""
-        details = result.get("area") or ", ".join(
-            part
-            for part in (result.get("country"), result.get("region"))
-            if part
-        )
-        if details:
-            return f"{result['name']} ({details})"
-
-        return result["name"]
+    def _get_continent_name(self, slug: str) -> str:
+        """Map continent slug to friendly name."""
+        continent_map = {
+            "africa": "Africa",
+            "asia": "Asia",
+            "caribbean-sea": "Caribbean Sea",
+            "central-america": "Central America",
+            "europe": "Europe",
+            "middle-east": "Middle East",
+            "north-america": "North America",
+            "oceania": "Oceania",
+            "south-america": "South America",
+        }
+        return continent_map.get(slug, slug.replace("-", " ").title())

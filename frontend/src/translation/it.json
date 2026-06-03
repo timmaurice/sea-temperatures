@@ -5,7 +5,7 @@
     "places": "Luoghi",
     "show_trend": "Mostra indicatori di tendenza (vs Ieri)",
     "show_last_updated": "Mostra ultimo aggiornamento",
-    "show_stats": "Mostra statistiche (Ieri, Settimana scorsa, Anno scorso)",
+    "show_stats": "Mostra statistiche (Ieri, Settimana scorsa, Media 10 anni)",
     "show_chart": "Mostra grafico storico (30g)",
     "show_country": "Aggiungi il paese al nome del luogo",
     "chart_smoothing": "Arrotondamento grafico",
@@ -26,7 +26,7 @@
   "card": {
     "yesterday": "Ieri",
     "last_week": "Settimana Scorsa",
-    "last_year": "Anno Scorso",
+    "average_avg": "Media 10 anni",
     "averages": "Medie",
     "min": "Min",
     "max": "Max",

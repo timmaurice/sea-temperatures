@@ -7,7 +7,7 @@
     "places": "Places",
     "show_trend": "Show trend indicators (vs Yesterday)",
     "show_last_updated": "Show last updated",
-    "show_stats": "Show statistics (Yesterday, Last Week, Last Year)",
+    "show_stats": "Show statistics (Yesterday, Last Week, 10-Year Avg)",
     "show_chart": "Show historical chart (30d)",
     "show_country": "Append country to place name",
     "chart_smoothing": "Chart smoothing",
@@ -28,7 +28,7 @@
   "card": {
     "yesterday": "Yesterday",
     "last_week": "Last Week",
-    "last_year": "Last Year",
+    "average_avg": "10-Year Avg",
     "averages": "Averages",
     "min": "Min",
     "max": "Max",
