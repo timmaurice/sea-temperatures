@@ -151,10 +151,9 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         const device = deviceId ? hass.devices[deviceId] : undefined;
         const baseName = device?.name_by_user || device?.name || attr.friendly_name || 'Unknown';
         const isFahrenheit = attr.unit_of_measurement === '°F' || attr.unit_of_measurement === 'F';
-
-        const convert = (val: any) => {
-          if (val === undefined || val === null || isNaN(parseFloat(val))) return undefined;
-          const c = parseFloat(val);
+        const convert = (val: unknown) => {
+          if (val === undefined || val === null || isNaN(parseFloat(String(val)))) return undefined;
+          const c = parseFloat(String(val));
           return isFahrenheit ? String(Math.round((c * 1.8 + 32) * 100) / 100) : String(c);
         };
 
