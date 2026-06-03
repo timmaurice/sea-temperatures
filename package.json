@@ -42,7 +42,7 @@
     "rollup-plugin-string": "^3.0.0",
     "sass": "^1.100.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.3",
+    "typescript-eslint": "^8.60.1",
     "vitest": "^4.1.7"
   },
   "dependencies": {
