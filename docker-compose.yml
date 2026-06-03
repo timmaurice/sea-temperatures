@@ -7,6 +7,6 @@ services:
       - ./custom_components/seatemperatures:/config/custom_components/seatemperatures
       - /etc/localtime:/etc/localtime:ro
     ports:
-      - '8124:8123'
+      - '8125:8123'
     restart: unless-stopped
     privileged: true

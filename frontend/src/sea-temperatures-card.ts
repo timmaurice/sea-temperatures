@@ -15,7 +15,6 @@ interface SeaTemperatureData {
   temperature: string;
   yesterday?: string;
   last_week?: string;
-  last_year?: string;
   date?: string;
   average_min?: string;
   average_max?: string;
@@ -61,7 +60,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
 
   public setConfig(config: SeaTemperaturesCardConfig): void {
     if (!config || !config.places || !Array.isArray(config.places) || config.places.length === 0) {
-      throw new Error("Please define 'places'");
+      throw new Error(localize(this.hass, 'common.errors.no_places'));
     }
     this._config = {
       show_last_updated: true,
@@ -151,18 +150,24 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         const attr = tempEntity.attributes;
         const device = deviceId ? hass.devices[deviceId] : undefined;
         const baseName = device?.name_by_user || device?.name || attr.friendly_name || 'Unknown';
+        const isFahrenheit = attr.unit_of_measurement === '°F' || attr.unit_of_measurement === 'F';
+
+        const convert = (val: any) => {
+          if (val === undefined || val === null || isNaN(parseFloat(val))) return undefined;
+          const c = parseFloat(val);
+          return isFahrenheit ? String(Math.round((c * 1.8 + 32) * 100) / 100) : String(c);
+        };
 
         places.push({
           name: customName || baseName,
           country: config.show_country && attr.country ? String(attr.country) : undefined,
           temperature: tempEntity.state,
-          yesterday: attr.yesterday ? String(attr.yesterday) : undefined,
-          last_week: attr.last_week ? String(attr.last_week) : undefined,
-          last_year: attr.last_year ? String(attr.last_year) : undefined,
+          yesterday: convert(attr.yesterday),
+          last_week: convert(attr.last_week),
           date: attr.date ? String(attr.date) : undefined,
-          average_min: attr.average_min ? String(attr.average_min) : undefined,
-          average_max: attr.average_max ? String(attr.average_max) : undefined,
-          average_avg: attr.average_avg ? String(attr.average_avg) : undefined,
+          average_min: convert(attr.average_min),
+          average_max: convert(attr.average_max),
+          average_avg: convert(attr.average_avg),
           unit: attr.unit_of_measurement || '°C',
           entity_id: tempEntity.entity_id,
         });
@@ -241,6 +246,9 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
           const currentYear = new Date().getFullYear();
           const currentMonth = new Date().getMonth() + 1; // 1-12
 
+          const isFahrenheit =
+            entity?.attributes?.unit_of_measurement === '°F' || entity?.attributes?.unit_of_measurement === 'F';
+
           chartData[entityId] = labels
             .map((label, index) => {
               const parts = String(label).split('-');
@@ -258,9 +266,14 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                 year += 1;
               }
 
+              let val = parseFloat(String(series[index]));
+              if (isFahrenheit && !isNaN(val)) {
+                val = Math.round((val * 1.8 + 32) * 100) / 100;
+              }
+
               return {
                 date: new Date(year, month - 1, day),
-                value: parseFloat(String(series[index])),
+                value: val,
               };
             })
             .filter((p) => !isNaN(p.value))
@@ -348,7 +361,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                       <div class="stats-grid">
                         ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
                         ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
-                        ${this._renderStat(localize(this.hass, 'card.last_year'), place.last_year, place.unit)}
+                        ${this._renderStat(localize(this.hass, 'card.average_avg'), place.average_avg, place.unit)}
                       </div>
                     `
                   : ''}

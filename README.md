@@ -11,12 +11,12 @@ This custom integration for Home Assistant fetches sea temperatures directly fro
 
 <img src="https://raw.githubusercontent.com/timmaurice/lovelace-sea-temperatures-card/main/image.png" alt="Card Screenshot" width="500px" />
 
-> We provide free daily current and average sea water temperatures for 12,165 locations in 227 countries.
+> Today's sea temperature, the 10-year average, and a 30-day trend for 19,259 coastal locations, lakes, and rivers around the world.
 
 ## Features
 
 - **Global Coverage**: Select coastal locations from around the world.
-- **Detailed Attributes**: Provides today's temperature alongside historical data (yesterday, last week, last year) and averages as attributes.
+- **Detailed Attributes**: Provides today's temperature alongside current site data such as yesterday, 10-year averages, and a 30-day chart. A `last_week` value is exposed only when it can be derived from the published 30-day series.
 - **Device per Place**: Creates a dedicated device in Home Assistant for each monitored location.
 - **Bundled Custom Card**: Displays current temperatures, 24h trend indicators (🌊/📈/📉), and a 30-day D3 historical area chart.
 - **Localization**: Supports English, German, Spanish, French, and Italian out of the box.
@@ -65,7 +65,7 @@ Once your sensor is set up, you can add the custom card to your Lovelace dashboa
 | `sort_by` | string | `default` | Sort places by `default`, `name`, `temp_asc`, or `temp_desc`. |
 | `show_last_updated` | boolean | `true` | Show the last updated timestamp. |
 | `show_trend` | boolean | `true` | Show 24h trend indicators. |
-| `show_stats` | boolean | `true` | Show statistics (Yesterday, Last Week, Last Year). |
+| `show_stats` | boolean | `true` | Show statistics (Yesterday, Last Week, 10-Year Avg). |
 | `show_chart` | boolean | `true` | Show historical 30-day D3 chart. |
 | `show_country` | boolean | `false` | Append the country to the place name (e.g., Bondi Beach (Australia)). |
 | `chart_smoothing` | string | `smooth` | Algorithm for D3 chart drawing. Valid options: `smooth`, `linear`, `step` |
@@ -87,9 +87,11 @@ show_country: true
 
 For each configured place, the following sensor will be created:
 
-| Sensor          | Description                        | Attributes                                                                                                                            | Example Value |
-| :-------------- | :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :------------ |
-| **Temperature** | The current sea temperature today. | `yesterday`, `last_week`, `last_year`, `date`, `average_min`, `average_max`, `average_avg`, `charts`, `continent`, `country`, `place` | `21.5`        |
+| Sensor          | Description                        | Attributes                                                                                                                                                                      | Example Value |
+| :-------------- | :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------ |
+| **Temperature** | The current sea temperature today. | `yesterday`, `last_week` (when derivable from the 30-day chart), `date`, `average_min`, `average_max`, `average_avg`, `charts`, `continent`, `country`, `area`, `place`, `path` | `21.5`        |
+
+`last_year` has been replaced by the `average_avg` (10-year average) attribute to align with the current SeaTemperatures.net layout.
 
 ## Development
 

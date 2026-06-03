@@ -9,11 +9,12 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .api import SeaTemperatureAPI
 from .const import (
-    DOMAIN,
+    CONF_AREA,
     CONF_CONTINENT,
     CONF_COUNTRY,
+    CONF_PATH,
     CONF_PLACE,
-    CONF_PLACE_ID,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,31 +23,35 @@ _LOGGER = logging.getLogger(__name__)
 class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Sea Temperature."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._places_data: dict[str, Any] | None = None
+        self._locations_data: dict[str, dict[str, str]] | None = None
         self._continents: list[str] = []
         self._countries: list[str] = []
-        self._places: dict[str, Any] = {}
+        self._places: dict[str, dict[str, str]] = {}
         self._data: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step (fetch places and select continent)."""
+        """Handle the initial step (fetch map locations and select continent)."""
         api = SeaTemperatureAPI(self.hass)
 
-        if self._places_data is None:
-            self._places_data = await api.get_places()
-            if not self._places_data:
+        if self._locations_data is None:
+            self._locations_data = await api._get_map_locations()
+            if not self._locations_data:
                 return self.async_abort(reason="cannot_connect")
 
-            # Extract continents from flat list
-            self._continents = sorted(
-                list(set(p["continent_name"] for p in self._places_data))
-            )
+            # Extract unique continents from path segments
+            continents_set = set()
+            for loc in self._locations_data.values():
+                path = loc.get("path", "")
+                parts = [p for p in path.split("/") if p]
+                if parts:
+                    continents_set.add(self._get_continent_name(parts[0]))
+            self._continents = sorted(list(continents_set))
 
         if user_input is not None:
             self._data[CONF_CONTINENT] = user_input[CONF_CONTINENT]
@@ -67,18 +72,17 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the country selection step."""
-        continent = self._data[CONF_CONTINENT]
+        selected_continent = self._data[CONF_CONTINENT]
 
-        # Always extract countries to handle back navigation correctly
-        self._countries = sorted(
-            list(
-                set(
-                    p["country_name"]
-                    for p in self._places_data
-                    if p["continent_name"] == continent
-                )
-            )
-        )
+        # Extract countries for the selected continent
+        countries_set = set()
+        for loc in self._locations_data.values():
+            path = loc.get("path", "")
+            parts = [p for p in path.split("/") if p]
+            if parts and self._get_continent_name(parts[0]) == selected_continent:
+                if loc.get("country"):
+                    countries_set.add(loc["country"])
+        self._countries = sorted(list(countries_set))
 
         if user_input is not None:
             self._data[CONF_COUNTRY] = user_input[CONF_COUNTRY]
@@ -99,34 +103,40 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the place selection step."""
-        continent = self._data[CONF_CONTINENT]
-        country = self._data[CONF_COUNTRY]
+        selected_continent = self._data[CONF_CONTINENT]
+        selected_country = self._data[CONF_COUNTRY]
 
-        # Always extract places for selected country/continent
-        places_list = [
-            p
-            for p in self._places_data
-            if p["continent_name"] == continent and p["country_name"] == country
-        ]
-        self._places = {p["place_name"]: p["id"] for p in places_list}
-        _LOGGER.debug(
-            "Populated self._places for %s, %s: %s",
-            continent,
-            country,
-            self._places,
-        )
+        # Extract places for selected country and continent
+        self._places = {}
+        for loc in self._locations_data.values():
+            path = loc.get("path", "")
+            parts = [p for p in path.split("/") if p]
+            if (
+                parts
+                and self._get_continent_name(parts[0]) == selected_continent
+                and loc.get("country") == selected_country
+            ):
+                place_name = loc["name"]
+                if loc.get("area"):
+                    place_name = f"{place_name} ({loc['area']})"
+                if place_name in self._places:
+                    place_name = f"{place_name} [{loc['path']}]"
+                self._places[place_name] = loc
 
         if user_input is not None:
-            place_name = user_input[CONF_PLACE]
-            place_id = self._places[place_name]
+            selected_label = user_input[CONF_PLACE]
+            location = self._places[selected_label]
+            await self.async_set_unique_id(location["path"])
+            self._abort_if_unique_id_configured()
 
             return self.async_create_entry(
-                title=f"{place_name} Sea Temperature",
+                title=f"{location['name']} Sea Temperature",
                 data={
-                    CONF_CONTINENT: continent,
-                    CONF_COUNTRY: country,
-                    CONF_PLACE: place_name,
-                    CONF_PLACE_ID: str(place_id),
+                    CONF_CONTINENT: selected_continent,
+                    CONF_COUNTRY: selected_country,
+                    CONF_AREA: location.get("area", ""),
+                    CONF_PLACE: location["name"],
+                    CONF_PATH: location["path"],
                 },
             )
 
@@ -143,3 +153,18 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             last_step=True,
         )
+
+    def _get_continent_name(self, slug: str) -> str:
+        """Map continent slug to friendly name."""
+        continent_map = {
+            "africa": "Africa",
+            "asia": "Asia",
+            "caribbean-sea": "Caribbean Sea",
+            "central-america": "Central America",
+            "europe": "Europe",
+            "middle-east": "Middle East",
+            "north-america": "North America",
+            "oceania": "Oceania",
+            "south-america": "South America",
+        }
+        return continent_map.get(slug, slug.replace("-", " ").title())

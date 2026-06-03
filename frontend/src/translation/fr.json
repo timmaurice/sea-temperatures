@@ -5,7 +5,7 @@
     "places": "Lieux",
     "show_trend": "Afficher les indicateurs de tendance (vs Hier)",
     "show_last_updated": "Afficher la dernière mise à jour",
-    "show_stats": "Afficher les statistiques (Hier, La semaine dernière, L'année dernière)",
+    "show_stats": "Afficher les statistiques (Hier, La semaine dernière, Moy. 10 ans)",
     "show_chart": "Afficher le graphique historique (30j)",
     "show_country": "Ajouter le pays au nom du lieu",
     "chart_smoothing": "Lissage du graphique",
@@ -26,7 +26,7 @@
   "card": {
     "yesterday": "Hier",
     "last_week": "La semaine dernière",
-    "last_year": "L'année dernière",
+    "average_avg": "Moy. 10 ans",
     "averages": "Moyennes",
     "min": "Min",
     "max": "Max",
