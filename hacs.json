@@ -2,5 +2,6 @@
   "name": "Sea Temperatures",
   "render_readme": true,
   "zip_release": true,
-  "filename": "sea-temperatures.zip"
+  "filename": "sea-temperatures.zip",
+  "homeassistant": "2026.6.0"
 }

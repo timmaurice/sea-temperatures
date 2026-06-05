@@ -1,7 +1,8 @@
+name: sea-temperatures-card-test
 services:
   homeassistant:
-    container_name: homeassistant-test
-    image: 'ghcr.io/home-assistant/home-assistant:stable'
+    container_name: ha-sea-temperatures-card-test
+    image: homeassistant/home-assistant:stable
     volumes:
       - ./test_config:/config
       - ./custom_components/seatemperatures:/config/custom_components/seatemperatures

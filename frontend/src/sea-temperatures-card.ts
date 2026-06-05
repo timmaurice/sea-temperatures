@@ -36,6 +36,7 @@ declare global {
       description: string;
       documentationURL: string;
       preview?: boolean;
+      getEntitySuggestion?: (hass: HomeAssistant, entityId: string) => { config: Record<string, unknown> } | null;
     }[];
     loadCardHelpers(): Promise<void>;
   }
@@ -46,6 +47,7 @@ declare global {
     description: string;
     documentationURL: string;
     preview?: boolean;
+    getEntitySuggestion?: (hass: HomeAssistant, entityId: string) => { config: Record<string, unknown> } | null;
   }
 }
 
@@ -320,9 +322,10 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     if (!this._config || !this.hass) return html``;
 
     const places = this._getPlacesData(this.hass, this._config);
+    const isNarrow = this._chartWidth < 360;
 
     return html`
-      <ha-card .header=${this._config.title} tabindex="0">
+      <ha-card .header=${this._config.title} tabindex="0" class="${isNarrow ? 'narrow' : ''}">
         <div class="card-content">
           ${places.map(
             (place) => html`
@@ -504,7 +507,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   private _drawChart(entityId: string, data: HistoryPoint[], place: SeaTemperatureData): TemplateResult {
     const width = this._chartWidth;
     const height = 120;
-    const margin = { top: 15, right: 65, bottom: 25, left: 10 };
+    const isNarrow = width < 360;
+    const margin = {
+      top: 15,
+      right: isNarrow ? 48 : 65,
+      bottom: 25,
+      left: 10,
+    };
 
     const x = scaleTime()
       .domain(extent(data, (d) => d.date) as [Date, Date])
@@ -541,7 +550,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       if (isNaN(v)) return null;
       const yPos = y(v);
       const unitStr = place.unit || '°C';
-      const displayText = label ? `${label} ${v.toFixed(1)}${unitStr}` : '';
+      const displayText = label ? (isNarrow ? `${v.toFixed(1)}${unitStr}` : `${label} ${v.toFixed(1)}${unitStr}`) : '';
       return svg`
         <line
           class="ref-line ${className}"
@@ -647,4 +656,15 @@ window.customCards.push({
   description: 'Display current and historical sea temperatures.',
   preview: true,
   documentationURL: 'https://github.com/timmaurice/sea-temperatures',
+  getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
+    if (entityId.startsWith('sensor.seatemperatures_') && hass.states[entityId]) {
+      return {
+        config: {
+          type: `custom:${ELEMENT_NAME}`,
+          places: [entityId],
+        },
+      };
+    }
+    return null;
+  },
 });

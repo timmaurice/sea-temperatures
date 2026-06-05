@@ -27,7 +27,7 @@ $max-color: #ff9800;
     margin-top: 16px;
     width: 100%;
     height: 120px;
-    background: rgba(var(--rgb-primary-color), 0.03);
+    background: rgba(var(--rgb-primary-color, 0, 119, 190), 0.03);
     border-radius: 8px;
     overflow: hidden;
   }
@@ -59,7 +59,7 @@ $max-color: #ff9800;
   .chart-line {
     stroke-linecap: round;
     stroke-linejoin: round;
-    filter: drop-shadow(0 2px 4px rgba(var(--rgb-primary-color), 0.2));
+    filter: drop-shadow(0 2px 4px rgba(var(--rgb-primary-color, 0, 119, 190), 0.2));
   }
 }
 
@@ -221,7 +221,7 @@ $max-color: #ff9800;
 }
 
 .now-dot {
-  filter: drop-shadow(0 1px 2px rgba(var(--rgb-primary-color), 0.3));
+  filter: drop-shadow(0 1px 2px rgba(var(--rgb-primary-color, 0, 119, 190), 0.3));
 }
 
 .extrema-dot {
@@ -273,4 +273,54 @@ $max-color: #ff9800;
 
 .hover-overlay {
   cursor: crosshair;
+}
+
+ha-card.narrow {
+  .card-content {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .place-row {
+    padding-bottom: 12px;
+
+    .chart-container {
+      margin-top: 12px;
+    }
+  }
+
+  .place-name {
+    font-size: 1.05rem;
+  }
+
+  .temp-value {
+    font-size: 1.6rem;
+  }
+
+  .stats-grid {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .stat-item {
+    padding: 6px 4px;
+    border-radius: 6px;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    margin-bottom: 2px;
+  }
+
+  .stat-value {
+    font-size: 0.8rem;
+  }
+
+  .ref-label {
+    font-size: 7px;
+  }
+
+  .axis-label {
+    font-size: 7px;
+  }
 }
