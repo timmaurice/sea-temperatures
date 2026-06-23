@@ -16,10 +16,18 @@ updates:
     commit-message:
       prefix: 'chore(deps)'
 
-  # Maintain dependencies for Node/Frontend
+  # Enable version updates for npm
   - package-ecosystem: 'npm'
+    # Look for `package.json` and `lock` files in the `root` directory
     directory: '/'
+    # Check for updates every week
     schedule:
       interval: 'weekly'
-    commit-message:
-      prefix: 'chore(deps)'
+    # Add a label to pull requests
+    labels:
+      - 'dependencies'
+    # Group all npm dependencies into a single pull request
+    groups:
+      npm-dependencies:
+        patterns:
+          - '*'
