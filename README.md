@@ -34,6 +34,7 @@ This integration is available in the [Home Assistant Community Store (HACS)](htt
 
 1.  Using the tool of your choice, copy the `seatemperatures` folder from `custom_components` in this repository into your Home Assistant's `custom_components` directory.
 2.  Restart Home Assistant.
+
 </details>
 
 ## Configuration
@@ -57,18 +58,19 @@ Once your sensor is set up, you can add the custom card to your Lovelace dashboa
 2. Search for "Custom: Sea Temperatures Card" or use the Manual YAML editor.
 
 **YAML Configuration:**
-| Name | Type | Default | Description |
-| ------------------- | ----------------------- | ------------ | -------------------------------------------------------------------------------------------- |
-| `type` | string | **Required** | `custom:sea-temperatures-card` |
-| `title` | string | `(none)` | The title of the card. |
-| `places` | list | **Required** | A list of places to display. Can be entity IDs, device IDs, or objects with `device` and `name`. |
-| `sort_by` | string | `default` | Sort places by `default`, `name`, `temp_asc`, or `temp_desc`. |
-| `show_last_updated` | boolean | `true` | Show the last updated timestamp. |
-| `show_trend` | boolean | `true` | Show 24h trend indicators. |
-| `show_stats` | boolean | `true` | Show statistics (Yesterday, Last Week, 10-Year Avg). |
-| `show_chart` | boolean | `true` | Show historical 30-day D3 chart. |
-| `show_country` | boolean | `false` | Append the country to the place name (e.g., Bondi Beach (Australia)). |
-| `chart_smoothing` | string | `smooth` | Algorithm for D3 chart drawing. Valid options: `smooth`, `linear`, `step` |
+
+| Name                | Type    | Default      | Description                                                                                      |
+| ------------------- | ------- | ------------ | ------------------------------------------------------------------------------------------------ |
+| `type`              | string  | **Required** | `custom:sea-temperatures-card`                                                                   |
+| `title`             | string  | `(none)`     | The title of the card.                                                                           |
+| `places`            | list    | **Required** | A list of places to display. Can be entity IDs, device IDs, or objects with `device` and `name`. |
+| `sort_by`           | string  | `default`    | Sort places by `default`, `name`, `temp_asc`, or `temp_desc`.                                    |
+| `show_last_updated` | boolean | `true`       | Show the last updated timestamp.                                                                 |
+| `show_trend`        | boolean | `true`       | Show 24h trend indicators.                                                                       |
+| `show_stats`        | boolean | `true`       | Show statistics (Yesterday, Last Week, 10-Year Avg).                                             |
+| `show_chart`        | boolean | `true`       | Show historical 30-day D3 chart.                                                                 |
+| `show_country`      | boolean | `false`      | Append the country to the place name (e.g., Bondi Beach (Australia)).                            |
+| `chart_smoothing`   | string  | `smooth`     | Algorithm for D3 chart drawing. Valid options: `smooth`, `linear`, `step`                        |
 
 **YAML Example:**
 

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from html import unescape
 import json
 import logging
 import posixpath
 import re
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from html import unescape
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
@@ -158,7 +158,7 @@ def _parse_page_date(html: str) -> str | None:
 
     page_date = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", match.group(1))
     try:
-        return datetime.strptime(page_date, "%A %d %B, %Y").date().isoformat()
+        return datetime.strptime(page_date, "%A %d %B, %Y").date().isoformat()  # noqa: DTZ007 - date-only value, timezone is irrelevant
     except ValueError:
         _LOGGER.debug("Failed to parse page date from %s", page_date)
         return None
