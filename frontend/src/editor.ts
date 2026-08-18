@@ -71,20 +71,47 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
     fireEvent(this, 'config-changed', { config: this._config });
   }
 
+  /** The entity_id or device_id a place points at. */
+  private static _targetOf(place: PlaceConfig | undefined): string {
+    if (!place) return '';
+    return typeof place === 'string' ? place : place.device || '';
+  }
+
+  /** The optional display name override of a place. */
+  private static _nameOf(place: PlaceConfig | undefined): string {
+    return place && typeof place !== 'string' ? place.name || '' : '';
+  }
+
+  /** entity_ids always contain a dot, device_ids never do. */
+  private static _isEntityTarget(target: string): boolean {
+    return target.includes('.');
+  }
+
+  /** Rebuilds a place, keeping the object form only while a name is set. */
+  private static _buildPlace(target: string, name: string): PlaceConfig {
+    return name ? { device: target, name } : target;
+  }
+
+  private _commitPlace(index: number, value: PlaceConfig): void {
+    const places = [...(this._config.places || [])];
+    places[index] = value;
+    this._config = { ...this._config, places };
+    fireEvent(this, 'config-changed', { config: this._config });
+  }
+
   private _placeChanged(index: number, value: PlaceConfig | undefined): void {
-    if (!value) {
+    const target = SeaTemperaturesCardEditor._targetOf(value);
+
+    if (!target) {
       this._removePlace(index);
       return;
     }
 
     const places = [...(this._config.places || [])];
-    const target = typeof value === 'string' ? value : value.device;
 
-    const isDuplicate = places.some((place, i) => {
-      if (i === index || !place) return false;
-      const placeTarget = typeof place === 'string' ? place : place.device;
-      return placeTarget === target;
-    });
+    const isDuplicate = places.some(
+      (place, i) => i !== index && place && SeaTemperaturesCardEditor._targetOf(place) === target,
+    );
 
     if (isDuplicate) {
       fireEvent(this, 'hass-notification', { message: localize(this.hass, 'common.errors.duplicate_place') });
@@ -92,9 +119,10 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
       return;
     }
 
-    places[index] = value;
-    this._config = { ...this._config, places };
-    fireEvent(this, 'config-changed', { config: this._config });
+    // Preserve any custom name: the selector only ever reports a bare target,
+    // so writing its value straight through would drop the name.
+    const name = SeaTemperaturesCardEditor._nameOf(places[index]);
+    this._commitPlace(index, SeaTemperaturesCardEditor._buildPlace(target, name));
   }
 
   private _removePlace(index: number): void {
@@ -168,21 +196,28 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
             </div>
             <ha-sortable handle-selector=".handle" @item-moved=${this._placeMoved}>
               <div class="places">
-                ${this._config.places?.map(
-                  (place, index) => html`
+                ${this._config.places?.map((place, index) => {
+                  const target = SeaTemperaturesCardEditor._targetOf(place);
+                  // Render whichever selector matches how the place is configured, so an
+                  // entity-based config stays editable instead of showing an empty row.
+                  const selector = SeaTemperaturesCardEditor._isEntityTarget(target)
+                    ? { entity: { integration: 'seatemperatures' } }
+                    : { device: { integration: 'seatemperatures' } };
+
+                  return html`
                     <div class="place-item">
                       <div class="handle">
                         <ha-icon icon="mdi:drag"></ha-icon>
                       </div>
                       <ha-selector
                         .hass=${this.hass}
-                        .selector=${{ device: { integration: 'seatemperatures' } }}
-                        .value=${typeof place === 'string' ? place : place.device}
+                        .selector=${selector}
+                        .value=${target}
                         @value-changed=${(e: CustomEvent) => this._placeChanged(index, e.detail.value)}
                       ></ha-selector>
                     </div>
-                  `,
-                )}
+                  `;
+                })}
               </div>
             </ha-sortable>
             <div class="add-place-container">

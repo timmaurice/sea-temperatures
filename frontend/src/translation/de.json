@@ -32,7 +32,8 @@
     "averages": "Durchschnitte",
     "min": "Min",
     "max": "Max",
-    "avg": "Ø"
+    "avg": "Ø",
+    "chart_description": "30-Tage-Trend"
   },
   "common": {
     "errors": {

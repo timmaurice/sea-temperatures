@@ -18,7 +18,10 @@ This custom integration for Home Assistant fetches sea temperatures directly fro
 - **Global Coverage**: Select coastal locations from around the world.
 - **Detailed Attributes**: Provides today's temperature alongside current site data such as yesterday, 10-year averages, and a 30-day chart. A `last_week` value is exposed only when it can be derived from the published 30-day series.
 - **Device per Place**: Creates a dedicated device in Home Assistant for each monitored location.
-- **Bundled Custom Card**: Displays current temperatures, 24h trend indicators (🌊/📈/📉), and a 30-day D3 historical area chart.
+- **Bundled Custom Card**: Displays current temperatures, 24h trend indicators (↑/↓/→), and a 30-day D3 historical area chart.
+- **Touch Friendly**: The chart is scrubbable by touch and pen as well as by mouse, without blocking page scrolling.
+- **Accessible**: Place rows are focusable and keyboard-operable, and both the row and the chart expose screen-reader summaries.
+- **Graceful When Offline**: An unavailable or unknown place shows a dash instead of a bogus reading and sorts last.
 - **Localization**: Supports English, German, Spanish, French, and Italian out of the box.
 
 ## Installation
@@ -59,18 +62,18 @@ Once your sensor is set up, you can add the custom card to your Lovelace dashboa
 
 **YAML Configuration:**
 
-| Name                | Type    | Default      | Description                                                                                      |
-| ------------------- | ------- | ------------ | ------------------------------------------------------------------------------------------------ |
-| `type`              | string  | **Required** | `custom:sea-temperatures-card`                                                                   |
-| `title`             | string  | `(none)`     | The title of the card.                                                                           |
-| `places`            | list    | **Required** | A list of places to display. Can be entity IDs, device IDs, or objects with `device` and `name`. |
-| `sort_by`           | string  | `default`    | Sort places by `default`, `name`, `temp_asc`, or `temp_desc`.                                    |
-| `show_last_updated` | boolean | `true`       | Show the last updated timestamp.                                                                 |
-| `show_trend`        | boolean | `true`       | Show 24h trend indicators.                                                                       |
-| `show_stats`        | boolean | `true`       | Show statistics (Yesterday, Last Week, 10-Year Avg).                                             |
-| `show_chart`        | boolean | `true`       | Show historical 30-day D3 chart.                                                                 |
-| `show_country`      | boolean | `false`      | Append the country to the place name (e.g., Bondi Beach (Australia)).                            |
-| `chart_smoothing`   | string  | `smooth`     | Algorithm for D3 chart drawing. Valid options: `smooth`, `linear`, `step`                        |
+| Name                | Type    | Default      | Description                                                                                                            |
+| ------------------- | ------- | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `type`              | string  | **Required** | `custom:sea-temperatures-card`                                                                                         |
+| `title`             | string  | `(none)`     | The title of the card.                                                                                                 |
+| `places`            | list    | **Required** | A list of places to display. Can be entity IDs, device IDs, or objects with `device` and `name` (`name` is YAML only). |
+| `sort_by`           | string  | `default`    | Sort places by `default`, `name`, `temp_asc`, or `temp_desc`.                                                          |
+| `show_last_updated` | boolean | `true`       | Show the last updated timestamp.                                                                                       |
+| `show_trend`        | boolean | `true`       | Show 24h trend indicators.                                                                                             |
+| `show_stats`        | boolean | `true`       | Show statistics (Yesterday, Last Week, 10-Year Avg).                                                                   |
+| `show_chart`        | boolean | `true`       | Show historical 30-day D3 chart.                                                                                       |
+| `show_country`      | boolean | `false`      | Append the country to the place name (e.g., Bondi Beach (Australia)).                                                  |
+| `chart_smoothing`   | string  | `smooth`     | Algorithm for D3 chart drawing. Valid options: `smooth`, `linear`, `step`                                              |
 
 **YAML Example:**
 
@@ -95,6 +98,8 @@ For each configured place, the following sensor will be created:
 
 `last_year` has been replaced by the `average_avg` (10-year average) attribute to align with the current SeaTemperatures.net layout.
 
+The `charts` attribute holds the 30-day series as `charts.last_thirty` with `labels` and `series`. Labels are full ISO calendar dates (`YYYY-MM-DD`); earlier releases emitted `MM-DD`, which the card still accepts when reading a restored state.
+
 ## Development
 
 <details>
@@ -105,7 +110,8 @@ This repository includes a standard Home Assistant Devcontainer.
 1. Open the repository in VS Code and select "Reopen in Container".
 2. The environment will automatically install Python dependencies and Pyrefly.
 3. The frontend dependencies (`npm install`) will be automatically installed in the `/frontend` directory.
-4. To build the frontend card locally, run:
+4. Building the card requires **Node 20 or newer**; the toolchain fails on Node 18.
+5. To build the frontend card locally, run:
 
 ```bash
     npm run build

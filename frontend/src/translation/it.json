@@ -1,6 +1,8 @@
 {
   "editor": {
-    "groups": { "display": "Visualizzazione" },
+    "groups": {
+      "display": "Visualizzazione"
+    },
     "title": "Titolo (Opzionale)",
     "places": "Luoghi",
     "show_trend": "Mostra indicatori di tendenza (vs Ieri)",
@@ -30,7 +32,8 @@
     "averages": "Medie",
     "min": "Min",
     "max": "Max",
-    "avg": "Med"
+    "avg": "Med",
+    "chart_description": "Andamento a 30 giorni"
   },
   "common": {
     "errors": {
