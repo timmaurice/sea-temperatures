@@ -51,7 +51,7 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 parts = [p for p in path.split("/") if p]
                 if parts:
                     continents_set.add(self._get_continent_name(parts[0]))
-            self._continents = sorted(list(continents_set))
+            self._continents = sorted(continents_set)
 
         if user_input is not None:
             self._data[CONF_CONTINENT] = user_input[CONF_CONTINENT]
@@ -79,10 +79,13 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         for loc in self._locations_data.values():
             path = loc.get("path", "")
             parts = [p for p in path.split("/") if p]
-            if parts and self._get_continent_name(parts[0]) == selected_continent:
-                if loc.get("country"):
-                    countries_set.add(loc["country"])
-        self._countries = sorted(list(countries_set))
+            if (
+                parts
+                and self._get_continent_name(parts[0]) == selected_continent
+                and loc.get("country")
+            ):
+                countries_set.add(loc["country"])
+        self._countries = sorted(countries_set)
 
         if user_input is not None:
             self._data[CONF_COUNTRY] = user_input[CONF_COUNTRY]
@@ -143,7 +146,7 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data_schema = vol.Schema(
             {
                 vol.Required(CONF_PLACE): vol.In(
-                    sorted(list(self._places.keys())) if self._places else []
+                    sorted(self._places.keys()) if self._places else []
                 ),
             }
         )

@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -81,7 +80,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         try:
             _LOGGER.info("Registering lovelace resource: %s", new_url)
             await resources.async_create_item({"res_type": "module", "url": new_url})
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - resource registration must never break setup
             _LOGGER.warning("Failed to register lovelace resource: %s", e)
 
     from homeassistant.const import EVENT_HOMEASSISTANT_STARTED

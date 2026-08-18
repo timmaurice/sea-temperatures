@@ -236,8 +236,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     entities.forEach((entityId) => {
       const entity = this.hass?.states[entityId];
       const charts = entity?.attributes?.charts as
-        | { last_thirty?: { labels?: string[]; series?: (number | string)[] } }
-        | undefined;
+        { last_thirty?: { labels?: string[]; series?: (number | string)[] } } | undefined;
 
       if (charts?.last_thirty?.labels && charts?.last_thirty?.series) {
         const labels = charts.last_thirty.labels as string[];
@@ -336,37 +335,45 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                       <span class="place-name">${place.name}</span>
                       ${place.country ? html`<span class="place-country">${place.country}</span>` : ''}
                     </div>
-                    ${this._config.show_last_updated
-                      ? html`<div class="last-updated">
-                          ${this.hass.states[place.entity_id]
-                            ? new Date(this.hass.states[place.entity_id].last_updated).toLocaleString(
-                                this.hass.language || undefined,
-                                { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
-                              )
-                            : ''}
-                        </div>`
-                      : ''}
+                    ${
+                      this._config.show_last_updated
+                        ? html`<div class="last-updated">
+                            ${
+                              this.hass.states[place.entity_id]
+                                ? new Date(this.hass.states[place.entity_id].last_updated).toLocaleString(
+                                    this.hass.language || undefined,
+                                    { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+                                  )
+                                : ''
+                            }
+                          </div>`
+                        : ''
+                    }
                   </div>
                   <div class="current-temp">
                     <span class="temp-value"
-                      >${!isNaN(Number(place.temperature))
-                        ? new Intl.NumberFormat(this.hass?.language).format(Number(place.temperature))
-                        : place.temperature}</span
+                      >${
+                        !isNaN(Number(place.temperature))
+                          ? new Intl.NumberFormat(this.hass?.language).format(Number(place.temperature))
+                          : place.temperature
+                      }</span
                     >
                     <span class="temp-unit">${place.unit}</span>
                     ${this._renderTrend(place.yesterday, place.temperature, place.unit)}
                   </div>
                 </div>
 
-                ${this._config.show_stats !== false
-                  ? html`
-                      <div class="stats-grid">
-                        ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
-                        ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
-                        ${this._renderStat(localize(this.hass, 'card.average_avg'), place.average_avg, place.unit)}
-                      </div>
-                    `
-                  : ''}
+                ${
+                  this._config.show_stats !== false
+                    ? html`
+                        <div class="stats-grid">
+                          ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
+                          ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
+                          ${this._renderStat(localize(this.hass, 'card.average_avg'), place.average_avg, place.unit)}
+                        </div>
+                      `
+                    : ''
+                }
                 ${this._config.show_chart !== false ? this._renderChart(place) : ''}
               </div>
             `,
