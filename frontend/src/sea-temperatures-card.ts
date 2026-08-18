@@ -3,7 +3,9 @@ import { property, state, query } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCard, LovelaceCardEditor, PlaceConfig, SeaTemperaturesCardConfig } from './types.js';
 import { localize } from './localize.js';
 import { fireEvent } from './utils.js';
-import { scaleTime, scaleLinear, line, area, curveMonotoneX, curveLinear, curveStepAfter, extent, bisector } from 'd3';
+import { scaleTime, scaleLinear, type ScaleLinear, type ScaleTime } from 'd3-scale';
+import { line, area, curveMonotoneX, curveLinear, curveStepAfter } from 'd3-shape';
+import { extent, bisector } from 'd3-array';
 import styles from './styles/card.styles.scss';
 
 const ELEMENT_NAME = 'sea-temperatures-card';
@@ -21,6 +23,7 @@ interface SeaTemperatureData {
   average_avg?: string;
   unit?: string;
   entity_id: string;
+  unavailable: boolean;
 }
 
 interface HistoryPoint {
@@ -58,11 +61,22 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   @state() private _chartData: Record<string, HistoryPoint[]> = {}; // entity_id -> history points
   @state() private _chartWidth = 400;
   private _resizeObserver?: ResizeObserver;
-  private _dataFetched = false;
+  /** Last seen `charts` attribute object per entity, to detect coordinator refreshes. */
+  private _chartSources: Record<string, unknown> = {};
+  /** Memo for _getPlacesData, keyed on the hass sub-objects it reads. */
+  private _placesMemo?: {
+    states: unknown;
+    entities: unknown;
+    devices: unknown;
+    config: unknown;
+    places: SeaTemperatureData[];
+  };
 
   public setConfig(config: SeaTemperaturesCardConfig): void {
     if (!config || !config.places || !Array.isArray(config.places) || config.places.length === 0) {
-      throw new Error(localize(this.hass, 'common.errors.no_places'));
+      // Home Assistant calls setConfig() before assigning `hass`, so there is no
+      // language to localize into here and the thrown string is English by necessity.
+      throw new Error('You need to define at least one place.');
     }
     this._config = {
       show_last_updated: true,
@@ -70,7 +84,6 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       show_stats: true,
       show_chart: true,
       show_country: false,
-      compact: false,
       chart_smoothing: 'smooth',
       ...config,
     };
@@ -110,10 +123,53 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   }
 
   public getCardSize(): number {
-    return this._config?.places?.length || 1;
+    return (this._config?.places?.length || 1) * this._rowsPerPlace();
+  }
+
+  /** Approximate masonry/grid rows (~50px each) taken by a single place. */
+  private _rowsPerPlace(): number {
+    let rows = 1; // name + current temperature
+    if (this._config?.show_stats !== false) rows += 1;
+    if (this._config?.show_chart !== false) rows += 3; // 120px chart + margin
+    return rows;
+  }
+
+  public getGridOptions(): Record<string, number> {
+    const places = this._config?.places?.length || 1;
+    return {
+      rows: places * this._rowsPerPlace(),
+      columns: 12,
+      min_rows: 2,
+      min_columns: 6,
+    };
   }
 
   private _getPlacesData(hass: HomeAssistant, config: SeaTemperaturesCardConfig): SeaTemperatureData[] {
+    // shouldUpdate() calls this on every state change in the whole instance, and a
+    // device-id place scans every entity, so reuse the result while the inputs are identical.
+    const memo = this._placesMemo;
+    if (
+      memo &&
+      memo.states === hass.states &&
+      memo.entities === hass.entities &&
+      memo.devices === hass.devices &&
+      memo.config === config
+    ) {
+      return memo.places;
+    }
+
+    const places = this._computePlacesData(hass, config);
+    this._placesMemo = {
+      states: hass.states,
+      entities: hass.entities,
+      devices: hass.devices,
+      config,
+      places,
+    };
+    return places;
+  }
+
+  private _computePlacesData(hass: HomeAssistant, config: SeaTemperaturesCardConfig): SeaTemperatureData[] {
     const places: SeaTemperatureData[] = [];
     const allEntities = Object.values(hass.states);
 
@@ -150,6 +206,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
 
       if (tempEntity) {
         const attr = tempEntity.attributes;
+        const isUnavailable = tempEntity.state === 'unavailable' || tempEntity.state === 'unknown';
         const device = deviceId ? hass.devices[deviceId] : undefined;
         const baseName = device?.name_by_user || device?.name || attr.friendly_name || 'Unknown';
         const isFahrenheit = attr.unit_of_measurement === '°F' || attr.unit_of_measurement === 'F';
@@ -171,6 +228,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
           average_avg: convert(attr.average_avg),
           unit: attr.unit_of_measurement || '°C',
           entity_id: tempEntity.entity_id,
+          unavailable: isUnavailable,
         });
       }
     });
@@ -183,8 +241,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         if (config.sort_by === 'temp_asc' || config.sort_by === 'temp_desc') {
           const tempA = parseFloat(a.temperature);
           const tempB = parseFloat(b.temperature);
-          const valA = isNaN(tempA) ? -Infinity : tempA;
-          const valB = isNaN(tempB) ? -Infinity : tempB;
+          // Unavailable places sort last in both directions rather than reading as -Inf.
+          const valA = isNaN(tempA) ? null : tempA;
+          const valB = isNaN(tempB) ? null : tempB;
+          if (valA === null || valB === null) {
+            if (valA === valB) return 0;
+            return valA === null ? 1 : -1;
+          }
 
           if (config.sort_by === 'temp_asc') {
             return valA - valB;
@@ -199,14 +262,26 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return places;
   }
 
-  protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
-    super.updated(changedProperties);
-
-    // We can only fetch history once we have both _config and hass
-    if (this.hass && this._config && !this._dataFetched) {
-      this._dataFetched = true;
+  protected willUpdate(): void {
+    // The coordinator refreshes every couple of hours and places can be added at any
+    // time, so rebuild the series whenever a `charts` attribute object is replaced.
+    // Assigning _chartData here folds the result into the current render cycle.
+    if (this.hass && this._config && this._chartSourcesChanged()) {
       this._fetchChartData();
     }
+  }
+
+  /** True when any configured place has a `charts` attribute we have not processed yet. */
+  private _chartSourcesChanged(): boolean {
+    if (!this._config?.places) return false;
+    const places = this._getPlacesData(this.hass, this._config);
+    if (places.length === 0) return false;
+
+    if (places.some((p) => this._chartSources[p.entity_id] !== this.hass.states[p.entity_id]?.attributes?.charts)) {
+      return true;
+    }
+    // A removed place should drop out of the cache too.
+    return Object.keys(this._chartSources).some((entityId) => !places.some((p) => p.entity_id === entityId));
   }
 
   protected shouldUpdate(changedProperties: Map<string | number | symbol, unknown>): boolean {
@@ -219,71 +294,114 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         hasChanged ||
         oldHass.language !== this.hass.language ||
         changedProperties.has('_chartData') ||
-        changedProperties.has('_chartWidth')
+        changedProperties.has('_chartWidth') ||
+        this._chartSourcesChanged()
       );
     }
     return true;
   }
 
+  /**
+   * Parses a chart label into a calendar date.
+   *
+   * The integration emits ISO `YYYY-MM-DD`. Older payloads cached in a restored state
+   * may still carry `MM-DD`, so the year is inferred for those as a fallback.
+   */
+  private _parseChartLabel(label: string, now: Date): Date | undefined {
+    const parts = String(label).split('-');
+
+    if (parts.length === 3) {
+      const [year, month, day] = parts.map((part) => parseInt(part, 10));
+      if (isNaN(year) || isNaN(month) || isNaN(day)) return undefined;
+      return new Date(year, month - 1, day);
+    }
+
+    if (parts.length === 2) {
+      const month = parseInt(parts[0], 10);
+      const day = parseInt(parts[1], 10);
+      if (isNaN(month) || isNaN(day)) return undefined;
+
+      // Legacy labels carry no year: pick the most recent occurrence that is not
+      // in the future, which is correct for a trailing 30-day window.
+      const candidate = new Date(now.getFullYear(), month - 1, day);
+      if (candidate.getTime() > now.getTime()) {
+        candidate.setFullYear(candidate.getFullYear() - 1);
+      }
+      return candidate;
+    }
+
+    return undefined;
+  }
+
   private _fetchChartData(): void {
     if (!this.hass || !this._config.places) return;
     const places = this._getPlacesData(this.hass, this._config);
-    const entities = places.map((p) => p.entity_id);
-    if (entities.length === 0) return;
 
     const chartData: Record<string, HistoryPoint[]> = {};
+    const chartSources: Record<string, unknown> = {};
+    const now = new Date();
 
-    entities.forEach((entityId) => {
+    places.forEach(({ entity_id: entityId }) => {
       const entity = this.hass?.states[entityId];
       const charts = entity?.attributes?.charts as
         { last_thirty?: { labels?: string[]; series?: (number | string)[] } } | undefined;
 
-      if (charts?.last_thirty?.labels && charts?.last_thirty?.series) {
-        const labels = charts.last_thirty.labels as string[];
-        const series = charts.last_thirty.series as (number | string)[];
+      // Record the source even when unusable, so we do not reparse it every tick.
+      chartSources[entityId] = entity?.attributes?.charts;
 
-        if (Array.isArray(labels) && Array.isArray(series) && labels.length === series.length) {
-          const currentYear = new Date().getFullYear();
-          const currentMonth = new Date().getMonth() + 1; // 1-12
+      const labels = charts?.last_thirty?.labels;
+      const series = charts?.last_thirty?.series;
+      if (!Array.isArray(labels) || !Array.isArray(series) || labels.length !== series.length) return;
 
-          const isFahrenheit =
-            entity?.attributes?.unit_of_measurement === '°F' || entity?.attributes?.unit_of_measurement === 'F';
+      const isFahrenheit =
+        entity?.attributes?.unit_of_measurement === '°F' || entity?.attributes?.unit_of_measurement === 'F';
 
-          chartData[entityId] = labels
-            .map((label, index) => {
-              const parts = String(label).split('-');
-              if (parts.length !== 2) return { date: new Date(), value: NaN };
-              const month = parseInt(parts[0], 10);
-              const day = parseInt(parts[1], 10);
+      const points = labels
+        .map((label, index) => {
+          const date = this._parseChartLabel(label, now);
+          if (!date) return undefined;
 
-              let year = currentYear;
-              // If data month is ahead of current month (e.g. data is Dec, current is Jan), assume last year
-              if (month > currentMonth + 1) {
-                year -= 1;
-              }
-              // If we are late in the year (e.g., Dec) and we get data for early next year (e.g., Jan), this shouldn't happen for past 30 days, but just in case
-              if (currentMonth > 10 && month < 3) {
-                year += 1;
-              }
+          let value = parseFloat(String(series[index]));
+          if (isNaN(value)) return undefined;
+          if (isFahrenheit) value = Math.round((value * 1.8 + 32) * 100) / 100;
 
-              let val = parseFloat(String(series[index]));
-              if (isFahrenheit && !isNaN(val)) {
-                val = Math.round((val * 1.8 + 32) * 100) / 100;
-              }
+          return { date, value };
+        })
+        .filter((point): point is HistoryPoint => point !== undefined)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-              return {
-                date: new Date(year, month - 1, day),
-                value: val,
-              };
-            })
-            .filter((p) => !isNaN(p.value))
-            .sort((a, b) => a.date.getTime() - b.date.getTime());
-        }
-      }
+      if (points.length > 0) chartData[entityId] = points;
     });
 
-    this._chartData = { ...chartData };
-    this.requestUpdate();
+    this._chartSources = chartSources;
+    this._chartData = chartData;
+  }
+
+  private _handleHeaderKeydown(e: KeyboardEvent, entityId: string): void {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    this._handleMoreInfo(entityId);
+  }
+
+  /** Screen-reader summary for a place row. */
+  private _placeAriaLabel(place: SeaTemperatureData): string {
+    const parts = [place.name];
+    if (place.country) parts.push(place.country);
+    parts.push(place.unavailable ? place.temperature : `${place.temperature}${place.unit ?? ''}`);
+    return parts.join(', ');
+  }
+
+  /** Screen-reader summary for the 30-day chart, which is otherwise invisible to AT. */
+  private _chartAriaLabel(place: SeaTemperatureData, data: HistoryPoint[]): string {
+    const values = data.map((p) => p.value);
+    const unit = place.unit ?? '';
+    const format = (v: number) => `${new Intl.NumberFormat(this.hass?.language).format(v)}${unit}`;
+    return [
+      place.name,
+      localize(this.hass, 'card.chart_description'),
+      `${localize(this.hass, 'card.min')} ${format(Math.min(...values))}`,
+      `${localize(this.hass, 'card.max')} ${format(Math.max(...values))}`,
+    ].join(', ');
   }
 
   private _handleMoreInfo(entityId: string): void {
@@ -329,7 +447,14 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
           ${places.map(
             (place) => html`
               <div class="place-row">
-                <div class="place-header" @click=${() => this._handleMoreInfo(place.entity_id)}>
+                <div
+                  class="place-header"
+                  role="button"
+                  tabindex="0"
+                  aria-label=${this._placeAriaLabel(place)}
+                  @click=${() => this._handleMoreInfo(place.entity_id)}
+                  @keydown=${(e: KeyboardEvent) => this._handleHeaderKeydown(e, place.entity_id)}
+                >
                   <div class="place-info">
                     <div class="place-name-container">
                       <span class="place-name">${place.name}</span>
@@ -351,15 +476,19 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                     }
                   </div>
                   <div class="current-temp">
-                    <span class="temp-value"
-                      >${
-                        !isNaN(Number(place.temperature))
-                          ? new Intl.NumberFormat(this.hass?.language).format(Number(place.temperature))
-                          : place.temperature
-                      }</span
-                    >
-                    <span class="temp-unit">${place.unit}</span>
-                    ${this._renderTrend(place.yesterday, place.temperature, place.unit)}
+                    ${
+                      place.unavailable
+                        ? html`<span class="temp-value unavailable" title=${place.temperature}>&mdash;</span>`
+                        : html`<span class="temp-value"
+                              >${
+                                !isNaN(Number(place.temperature))
+                                  ? new Intl.NumberFormat(this.hass?.language).format(Number(place.temperature))
+                                  : place.temperature
+                              }</span
+                            >
+                            <span class="temp-unit">${place.unit}</span>
+                            ${this._renderTrend(place.yesterday, place.temperature, place.unit)}`
+                    }
                   </div>
                 </div>
 
@@ -409,6 +538,8 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
           viewBox="0 0 ${this._chartWidth} 120"
           preserveAspectRatio="xMidYMid meet"
           id="chart-${place.entity_id.replace(/\./g, '-')}"
+          role="img"
+          aria-label=${this._chartAriaLabel(place, data)}
         >
           ${this._drawChart(place.entity_id, data, place)}
         </svg>
@@ -416,14 +547,18 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _handleMouseMove(
-    e: MouseEvent,
+  private _handlePointerMove(
+    e: PointerEvent,
     entityId: string,
     data: HistoryPoint[],
-    x: d3.ScaleTime<number, number>,
-    y: d3.ScaleLinear<number, number>,
+    x: ScaleTime<number, number>,
+    y: ScaleLinear<number, number>,
     unit: string,
   ) {
+    // For touch/pen, pointermove only matters while the surface is pressed; a mouse
+    // has no buttons held while hovering, so let it through unconditionally.
+    if (e.pointerType !== 'mouse' && e.type === 'pointermove' && e.buttons === 0) return;
+
     const svgNode = (e.currentTarget as SVGRectElement).ownerSVGElement;
     if (!svgNode) return;
 
@@ -502,7 +637,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     });
   }
 
-  private _handleMouseLeave(e: MouseEvent) {
+  private _handlePointerLeave(e: PointerEvent) {
     const svgNode = (e.currentTarget as SVGRectElement).ownerSVGElement;
     if (!svgNode) return;
     const hoverGroup = svgNode.querySelector(`.hover-group`) as SVGGElement | null;
@@ -641,8 +776,11 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         width="${width - margin.left - margin.right}"
         height="${height - margin.top - margin.bottom}"
         fill="transparent"
-        @mousemove="${(e: MouseEvent) => this._handleMouseMove(e, entityId, data, x, y, unitStr)}"
-        @mouseleave="${(e: MouseEvent) => this._handleMouseLeave(e)}"
+        @pointerdown="${(e: PointerEvent) => this._handlePointerMove(e, entityId, data, x, y, unitStr)}"
+        @pointermove="${(e: PointerEvent) => this._handlePointerMove(e, entityId, data, x, y, unitStr)}"
+        @pointerleave="${(e: PointerEvent) => this._handlePointerLeave(e)}"
+        @pointercancel="${(e: PointerEvent) => this._handlePointerLeave(e)}"
+        @pointerup="${(e: PointerEvent) => this._handlePointerLeave(e)}"
       ></rect>
     `;
   }

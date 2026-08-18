@@ -88,7 +88,7 @@ describe('SeaTemperaturesCard', () => {
               unit_of_measurement: '°C',
               charts: {
                 last_thirty: {
-                  labels: ['03-12', '03-13'],
+                  labels: ['2026-03-12', '2026-03-13'],
                   series: [20.5, 21.0],
                 },
               },
@@ -161,7 +161,7 @@ describe('SeaTemperaturesCard', () => {
             attributes: {
               charts: {
                 last_thirty: {
-                  labels: ['03-12'],
+                  labels: ['2026-03-12'],
                   series: [20.5, 21.0], // mismatch
                 },
               },
@@ -210,7 +210,7 @@ describe('SeaTemperaturesCard', () => {
               average_avg: '18.0',
               charts: {
                 last_thirty: {
-                  labels: ['03-12', '03-13'],
+                  labels: ['2026-03-12', '2026-03-13'],
                   series: [20.5, 21.0],
                 },
               },
@@ -422,6 +422,257 @@ describe('SeaTemperaturesCard', () => {
       expect(data[0].temperature).toBe('25.0');
       expect(data[1].temperature).toBe('20.0');
       expect(data[2].temperature).toBe('15.0');
+    });
+  });
+
+  describe('Chart Label Parsing', () => {
+    const parse = (label: string, now: Date) =>
+      (
+        new SeaTemperaturesCard() as unknown as {
+          _parseChartLabel: (l: string, n: Date) => Date | undefined;
+        }
+      )._parseChartLabel(label, now);
+
+    it('parses ISO labels with an explicit year', () => {
+      const date = parse('2025-12-28', new Date(2026, 0, 5));
+      expect(date?.getFullYear()).toBe(2025);
+      expect(date?.getMonth()).toBe(11);
+      expect(date?.getDate()).toBe(28);
+    });
+
+    it('rolls legacy MM-DD labels back across the new year', () => {
+      // On 5 Jan 2026, a "12-28" label is December 2025, not December 2026.
+      const date = parse('12-28', new Date(2026, 0, 5));
+      expect(date?.getFullYear()).toBe(2025);
+      expect(date?.getMonth()).toBe(11);
+    });
+
+    it('keeps legacy MM-DD labels in the current year when not in the future', () => {
+      const date = parse('03-12', new Date(2026, 4, 1));
+      expect(date?.getFullYear()).toBe(2026);
+      expect(date?.getMonth()).toBe(2);
+    });
+
+    it('rejects unparseable labels', () => {
+      expect(parse('not-a-date', new Date(2026, 4, 1))).toBeUndefined();
+      expect(parse('2026', new Date(2026, 4, 1))).toBeUndefined();
+    });
+  });
+
+  describe('Chart Refresh', () => {
+    const stateWithLabels = (labels: string[], series: number[]) => ({
+      entity_id: 'sensor.sea_temp_sensor',
+      state: '21.0',
+      last_updated: '2026-03-15T12:00:00.000Z',
+      attributes: {
+        unit_of_measurement: '°C',
+        charts: { last_thirty: { labels, series } },
+      },
+    });
+
+    const hassWith = (state: unknown) =>
+      ({
+        states: { 'sensor.sea_temp_sensor': state },
+        entities: { 'sensor.sea_temp_sensor': { device_id: 'device-1' } },
+        devices: { 'device-1': { id: 'device-1', name: 'Test Device' } },
+        localize: (key: string) => key,
+      }) as unknown as HomeAssistant;
+
+    it('recomputes the series when the charts attribute changes', async () => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }],
+      } as unknown as SeaTemperaturesCardConfig);
+
+      card.hass = hassWith(stateWithLabels(['2026-03-12', '2026-03-13'], [20.5, 21.0]));
+      document.body.appendChild(card);
+      await card.updateComplete;
+
+      const harness = card as unknown as CardTestHarness;
+      expect(harness._chartData['sensor.sea_temp_sensor'].length).toBe(2);
+
+      // A coordinator refresh replaces the state (and the charts object).
+      card.hass = hassWith(stateWithLabels(['2026-03-12', '2026-03-13', '2026-03-14'], [20.5, 21.0, 21.5]));
+      await card.updateComplete;
+
+      const points = harness._chartData['sensor.sea_temp_sensor'];
+      expect(points.length).toBe(3);
+      expect(points[2].value).toBe(21.5);
+
+      card.remove();
+    });
+
+    it('builds the series for a place added after first render', async () => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }],
+      } as unknown as SeaTemperaturesCardConfig);
+
+      const second = {
+        entity_id: 'sensor.second_sensor',
+        state: '18.0',
+        last_updated: '2026-03-15T12:00:00.000Z',
+        attributes: {
+          unit_of_measurement: '°C',
+          charts: { last_thirty: { labels: ['2026-03-12', '2026-03-13'], series: [17.5, 18.0] } },
+        },
+      };
+
+      card.hass = {
+        states: {
+          'sensor.sea_temp_sensor': stateWithLabels(['2026-03-12', '2026-03-13'], [20.5, 21.0]),
+          'sensor.second_sensor': second,
+        },
+        entities: {
+          'sensor.sea_temp_sensor': { device_id: 'device-1' },
+          'sensor.second_sensor': { device_id: 'device-2' },
+        },
+        devices: {
+          'device-1': { id: 'device-1', name: 'Test Device' },
+          'device-2': { id: 'device-2', name: 'Second Device' },
+        },
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+
+      document.body.appendChild(card);
+      await card.updateComplete;
+
+      const harness = card as unknown as CardTestHarness;
+      expect(harness._chartData['sensor.sea_temp_sensor']?.length).toBe(2);
+      expect(harness._chartData['sensor.second_sensor']).toBeUndefined();
+
+      // Adding a place must not require a page reload to get its chart.
+      (card as unknown as { _config: SeaTemperaturesCardConfig })._config = {
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }, { device: 'device-2' }],
+      } as unknown as SeaTemperaturesCardConfig;
+      card.requestUpdate('_config');
+      await card.updateComplete;
+
+      expect(harness._chartData['sensor.second_sensor']?.length).toBe(2);
+      card.remove();
+    });
+  });
+
+  describe('Unavailable Places', () => {
+    const setupUnavailable = async (state: string) => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }],
+      } as unknown as SeaTemperaturesCardConfig);
+
+      card.hass = {
+        states: {
+          'sensor.sea_temp_sensor': {
+            entity_id: 'sensor.sea_temp_sensor',
+            state,
+            last_updated: '2026-03-15T12:00:00.000Z',
+            attributes: { unit_of_measurement: '°C', yesterday: '20.5' },
+          },
+        },
+        entities: { 'sensor.sea_temp_sensor': { device_id: 'device-1' } },
+        devices: { 'device-1': { id: 'device-1', name: 'Test Device' } },
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+
+      document.body.appendChild(card);
+      await card.updateComplete;
+      return card;
+    };
+
+    it('renders a placeholder instead of the raw state text', async () => {
+      const card = await setupUnavailable('unavailable');
+      const value = card.shadowRoot?.querySelector('.temp-value');
+      expect(value?.classList.contains('unavailable')).toBe(true);
+      expect(value?.textContent?.trim()).not.toContain('unavailable');
+      // No misleading trend delta against a missing reading.
+      expect(card.shadowRoot?.querySelector('.current-trend')).toBeNull();
+      card.remove();
+    });
+
+    it('treats unknown the same way', async () => {
+      const card = await setupUnavailable('unknown');
+      expect(card.shadowRoot?.querySelector('.temp-value.unavailable')).not.toBeNull();
+      card.remove();
+    });
+
+    it('sorts unavailable places last regardless of direction', async () => {
+      const card = new SeaTemperaturesCard();
+      const config = {
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }, { device: 'device-2' }],
+        sort_by: 'temp_asc',
+      } as unknown as SeaTemperaturesCardConfig;
+
+      const hass = {
+        states: {
+          'sensor.dead': { entity_id: 'sensor.dead', state: 'unavailable', attributes: {} },
+          'sensor.alive': { entity_id: 'sensor.alive', state: '15.0', attributes: {} },
+        },
+        entities: {
+          'sensor.dead': { device_id: 'device-1' },
+          'sensor.alive': { device_id: 'device-2' },
+        },
+        devices: {
+          'device-1': { id: 'device-1', name: 'Dead' },
+          'device-2': { id: 'device-2', name: 'Alive' },
+        },
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+
+      card.setConfig(config);
+      const data = (
+        card as unknown as {
+          _getPlacesData: (h: HomeAssistant, c: SeaTemperaturesCardConfig) => { name: string }[];
+        }
+      )._getPlacesData(hass, config);
+      expect(data[0].name).toBe('Alive');
+      expect(data[1].name).toBe('Dead');
+      card.remove();
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('exposes the place row as a keyboard-operable button', async () => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }],
+      } as unknown as SeaTemperaturesCardConfig);
+
+      card.hass = {
+        states: {
+          'sensor.sea_temp_sensor': {
+            entity_id: 'sensor.sea_temp_sensor',
+            state: '21.0',
+            last_updated: '2026-03-15T12:00:00.000Z',
+            attributes: { unit_of_measurement: '°C' },
+          },
+        },
+        entities: { 'sensor.sea_temp_sensor': { device_id: 'device-1' } },
+        devices: { 'device-1': { id: 'device-1', name: 'Test Device' } },
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+
+      document.body.appendChild(card);
+      await card.updateComplete;
+
+      const header = card.shadowRoot?.querySelector('.place-header') as HTMLElement;
+      expect(header.getAttribute('role')).toBe('button');
+      expect(header.getAttribute('tabindex')).toBe('0');
+      expect(header.getAttribute('aria-label')).toContain('Test Device');
+
+      let fired = 0;
+      card.addEventListener('hass-more-info', () => fired++);
+      header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      header.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      header.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      expect(fired).toBe(2);
+
+      card.remove();
     });
   });
 });

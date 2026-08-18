@@ -194,7 +194,8 @@ def _parse_trend_chart(html: str) -> tuple[list[str] | None, list[float] | None,
         return None, None, None
 
     points.sort(key=lambda point: point[0])
-    labels = [datetime.fromtimestamp(ts, UTC).strftime("%m-%d") for ts, _ in points]
+    # ISO calendar dates: the card must not have to guess the year from "MM-DD".
+    labels = [datetime.fromtimestamp(ts, UTC).strftime("%Y-%m-%d") for ts, _ in points]
     temps = [temp for _, temp in points]
 
     latest_timestamp = points[-1][0]

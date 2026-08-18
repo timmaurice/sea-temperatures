@@ -56,8 +56,8 @@ async def test_parse_location_page_from_copenhagen_fixture() -> None:
     assert data.average_max == pytest.approx(13.67)
     assert data.last_week == pytest.approx(10.31)
     assert data.trend_labels is not None
-    assert data.trend_labels[0] == "04-22"
-    assert data.trend_labels[-1] == "05-21"
+    assert data.trend_labels[0] == "2026-04-22"
+    assert data.trend_labels[-1] == "2026-05-21"
     assert data.trend_temps_c is not None
     assert data.trend_temps_c[-1] == pytest.approx(11.83)
 
@@ -197,7 +197,7 @@ async def test_get_temperatures_from_location_page(mock_hass) -> None:
     assert result["sst"]["yesterday"] == pytest.approx(11.7)
     assert result["sst"]["last_week"] == pytest.approx(10.31)
     assert result["sst"]["average"]["avg"] == pytest.approx(12.126000000000001)
-    assert result["charts"]["last_thirty"]["labels"][-1] == "05-21"
+    assert result["charts"]["last_thirty"]["labels"][-1] == "2026-05-21"
 
 
 async def test_get_location_by_place_id_uses_map_locations(mock_hass) -> None:

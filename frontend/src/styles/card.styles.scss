@@ -70,9 +70,16 @@ $max-color: #ff9800;
   margin-bottom: 12px;
   cursor: pointer;
   transition: opacity 0.2s ease;
+  border-radius: 6px;
 
   &:hover {
     opacity: 0.7;
+  }
+
+  // Keyboard users need to see which row is focused (the row is role="button").
+  &:focus-visible {
+    outline: 2px solid var(--primary-color, #0077be);
+    outline-offset: 2px;
   }
 }
 
@@ -115,6 +122,10 @@ $max-color: #ff9800;
   font-size: 2rem;
   font-weight: 700;
   color: var(--primary-color, #0077be);
+
+  &.unavailable {
+    color: var(--disabled-text-color, var(--secondary-text-color));
+  }
 }
 
 .temp-unit {
@@ -273,6 +284,8 @@ $max-color: #ff9800;
 
 .hover-overlay {
   cursor: crosshair;
+  // Allow vertical page scrolling to pass through while a horizontal drag scrubs.
+  touch-action: pan-y;
 }
 
 ha-card.narrow {

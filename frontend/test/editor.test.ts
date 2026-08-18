@@ -66,5 +66,71 @@ describe('SeaTemperaturesCardEditor', () => {
 
       editor.remove();
     });
+
+    it('keeps a custom name when the target selector reports a change', async () => {
+      const editor = await setupEditor({ places: [{ device: 'device-1', name: 'My Local Beach' }] });
+      const editorAny = editor as unknown as {
+        _config: SeaTemperaturesCardConfig;
+        _placeChanged: (i: number, v: unknown) => void;
+      };
+
+      // ha-selector only ever emits a bare target; the name must survive it.
+      editorAny._placeChanged(0, 'device-2');
+
+      expect(editorAny._config.places[0]).toEqual({ device: 'device-2', name: 'My Local Beach' });
+      editor.remove();
+    });
+
+    it('rejects a duplicate target without touching the config', async () => {
+      const editor = await setupEditor({ places: ['device-1', 'device-2'] });
+      const editorAny = editor as unknown as {
+        _config: SeaTemperaturesCardConfig;
+        _placeChanged: (i: number, v: unknown) => void;
+      };
+
+      editorAny._placeChanged(1, 'device-1');
+
+      expect(editorAny._config.places).toEqual(['device-1', 'device-2']);
+      editor.remove();
+    });
+
+    it('renders an entity selector for an entity-based place', async () => {
+      const editor = await setupEditor({ places: ['sensor.acharavi_sea_temperature'] });
+
+      const selector = editor.shadowRoot?.querySelector('ha-selector') as HTMLElement & {
+        selector?: Record<string, unknown>;
+        value?: string;
+      };
+      expect(selector?.selector?.entity).toBeDefined();
+      expect(selector?.selector?.device).toBeUndefined();
+      expect(selector?.value).toBe('sensor.acharavi_sea_temperature');
+
+      editor.remove();
+    });
+
+    it('renders a device selector for a device-based place', async () => {
+      const editor = await setupEditor({ places: [{ device: 'device-1' }] });
+
+      const selector = editor.shadowRoot?.querySelector('ha-selector') as HTMLElement & {
+        selector?: Record<string, unknown>;
+      };
+      expect(selector?.selector?.device).toBeDefined();
+      expect(selector?.selector?.entity).toBeUndefined();
+
+      editor.remove();
+    });
+
+    it('removes a place when the target is cleared', async () => {
+      const editor = await setupEditor({ places: ['device-1', 'device-2'] });
+      const editorAny = editor as unknown as {
+        _config: SeaTemperaturesCardConfig;
+        _placeChanged: (i: number, v: unknown) => void;
+      };
+
+      editorAny._placeChanged(0, undefined);
+
+      expect(editorAny._config.places).toEqual(['device-2']);
+      editor.remove();
+    });
   });
 });
