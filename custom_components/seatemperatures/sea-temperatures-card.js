@@ -1,4 +1,4 @@
-function t(t,e,n,r){var i,o=arguments.length,a=o<3?e:null===r?r=Object.getOwnPropertyDescriptor(e,n):r;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)a=Reflect.decorate(t,e,n,r);else for(var s=t.length-1;s>=0;s--)(i=t[s])&&(a=(o<3?i(a):o>3?i(e,n,a):i(e,n))||a);return o>3&&a&&Object.defineProperty(e,n,a),a}console.groupCollapsed("%c🌊 SEA TEMPERATURES CARD%cv3.1.0","color: orange; font-weight: bold; background: black; padding: 2px 4px; border-radius: 2px 0 0 2px;","color: white; font-weight: bold; background: dimgray; padding: 2px 4px; border-radius: 0 2px 2px 0;"),console.info("A Lovelace card to display sea temperatures."),console.info("Github:  https://github.com/timmaurice/sea-temperatures.git"),console.info("Sponsor: https://buymeacoffee.com/timmaurice"),console.groupEnd(),"function"==typeof SuppressedError&&SuppressedError;
+function t(t,e,n,r){var i,o=arguments.length,a=o<3?e:null===r?r=Object.getOwnPropertyDescriptor(e,n):r;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)a=Reflect.decorate(t,e,n,r);else for(var s=t.length-1;s>=0;s--)(i=t[s])&&(a=(o<3?i(a):o>3?i(e,n,a):i(e,n))||a);return o>3&&a&&Object.defineProperty(e,n,a),a}console.groupCollapsed("%c🌊 SEA TEMPERATURES CARD%cv3.1.1","color: orange; font-weight: bold; background: black; padding: 2px 4px; border-radius: 2px 0 0 2px;","color: white; font-weight: bold; background: dimgray; padding: 2px 4px; border-radius: 0 2px 2px 0;"),console.info("A Lovelace card to display sea temperatures."),console.info("Github:  https://github.com/timmaurice/sea-temperatures.git"),console.info("Sponsor: https://buymeacoffee.com/timmaurice"),console.groupEnd(),"function"==typeof SuppressedError&&SuppressedError;
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -55,8 +55,8 @@ const ft={attribute:!0,type:String,converter:w,reflect:!1,hasChanged:x},dt=(t=ft
                       ${t.country?W`<span class="place-country">${t.country}</span>`:""}
                     </div>
                     ${this._config.show_last_updated?W`<div class="last-updated">
-                          ${this.hass.states[t.entity_id]?new Date(this.hass.states[t.entity_id].last_updated).toLocaleString(this.hass.language||void 0,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):""}
-                        </div>`:""}
+                            ${this.hass.states[t.entity_id]?new Date(this.hass.states[t.entity_id].last_updated).toLocaleString(this.hass.language||void 0,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):""}
+                          </div>`:""}
                   </div>
                   <div class="current-temp">
                     <span class="temp-value"
@@ -68,12 +68,12 @@ const ft={attribute:!0,type:String,converter:w,reflect:!1,hasChanged:x},dt=(t=ft
                 </div>
 
                 ${!1!==this._config.show_stats?W`
-                      <div class="stats-grid">
-                        ${this._renderStat(yt(this.hass,"card.yesterday"),t.yesterday,t.unit)}
-                        ${this._renderStat(yt(this.hass,"card.last_week"),t.last_week,t.unit)}
-                        ${this._renderStat(yt(this.hass,"card.average_avg"),t.average_avg,t.unit)}
-                      </div>
-                    `:""}
+                        <div class="stats-grid">
+                          ${this._renderStat(yt(this.hass,"card.yesterday"),t.yesterday,t.unit)}
+                          ${this._renderStat(yt(this.hass,"card.last_week"),t.last_week,t.unit)}
+                          ${this._renderStat(yt(this.hass,"card.average_avg"),t.average_avg,t.unit)}
+                        </div>
+                      `:""}
                 ${!1!==this._config.show_chart?this._renderChart(t):""}
               </div>
             `)}
