@@ -42,8 +42,8 @@
     "rollup": "^4.62.4",
     "rollup-plugin-lit-css": "^6.0.1",
     "rollup-plugin-string": "^3.0.0",
-    "sass": "^1.102.0",
-    "typescript": "^6.0.3",
+    "sass": "^1.103.0",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"
   },
