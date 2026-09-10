@@ -24,16 +24,5 @@
     "abort": {
       "already_configured": "Questo luogo è già configurato."
     }
-  },
-  "entity": {
-    "sensor": {
-      "today": { "name": "Oggi" },
-      "yesterday": { "name": "Ieri" },
-      "last_week": { "name": "Settimana Scorsa" },
-      "last_year": { "name": "Anno Scorso" },
-      "average_avg": { "name": "Temperatura Media" },
-      "average_min": { "name": "Media Minima" },
-      "average_max": { "name": "Media Massima" }
-    }
   }
 }

@@ -30,16 +30,5 @@
     "abort": {
       "already_configured": "Dieser Ort ist bereits konfiguriert."
     }
-  },
-  "entity": {
-    "sensor": {
-      "today": { "name": "Heute" },
-      "yesterday": { "name": "Gestern" },
-      "last_week": { "name": "Letzte Woche" },
-      "last_year": { "name": "Letztes Jahr" },
-      "average_avg": { "name": "Durchschnittstemperatur" },
-      "average_min": { "name": "Minimaler Durchschnitt" },
-      "average_max": { "name": "Maximaler Durchschnitt" }
-    }
   }
 }
