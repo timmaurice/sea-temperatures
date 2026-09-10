@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiohttp
 import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.seatemperatures import async_migrate_entry
+from custom_components.seatemperatures import _async_fetch, async_migrate_entry
 from custom_components.seatemperatures.api import (
     SeaTemperatureAPI,
+    SeaTemperatureError,
     parse_map_locations,
     parse_search_results,
 )
@@ -468,3 +472,38 @@ async def test_every_step_offers_a_searchable_dropdown(mock_hass) -> None:
         selector = _selector_for(result["data_schema"], key)
         assert isinstance(selector, SelectSelector), key
         assert selector.config["mode"] == "dropdown", key
+
+
+async def test_get_temperatures_does_not_log_its_own_error(
+    mock_hass, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The coordinator logs a failed refresh, so the API layer must not."""
+    api = SeaTemperatureAPI(mock_hass)
+
+    with patch(
+        "custom_components.seatemperatures.api.async_get_clientsession"
+    ) as mock_session:
+        mock_session.return_value.get.side_effect = aiohttp.ClientError("boom")
+
+        with caplog.at_level(logging.DEBUG), pytest.raises(SeaTemperatureError) as excinfo:
+            await api.get_temperatures("/europe/denmark/copenhagen/")
+
+    assert "boom" in str(excinfo.value)
+    assert [record for record in caplog.records if record.levelno >= logging.ERROR] == []
+
+
+async def test_get_temperatures_rejects_an_invalid_path(mock_hass) -> None:
+    """An unusable path is a failed refresh, not a silent None."""
+    api = SeaTemperatureAPI(mock_hass)
+
+    with pytest.raises(SeaTemperatureError):
+        await api.get_temperatures("https://example.com/evil/")
+
+
+async def test_fetch_turns_an_api_error_into_update_failed() -> None:
+    """The coordinator has to see one UpdateFailed carrying the reason."""
+    api = MagicMock()
+    api.get_temperatures = AsyncMock(side_effect=SeaTemperatureError("upstream is down"))
+
+    with pytest.raises(UpdateFailed, match="upstream is down"):
+        await _async_fetch(api, "/europe/denmark/copenhagen/", "Copenhagen")

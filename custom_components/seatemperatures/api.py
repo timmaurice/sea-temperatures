@@ -20,6 +20,15 @@ _LOGGER = logging.getLogger(__name__)
 _MAP_LOCATIONS_CACHE = "map_locations_cache"
 
 
+class SeaTemperatureError(Exception):
+    """Raised when a location could not be fetched.
+
+    The message is meant to be handed to UpdateFailed: the coordinator already
+    logs a failed refresh, so logging it here as well printed every outage
+    twice.
+    """
+
+
 def parse_search_results(data: Any) -> list[dict[str, str]]:
     """Parse search endpoint results into normalized location dictionaries."""
     if not isinstance(data, dict):
@@ -120,7 +129,8 @@ class SeaTemperatureAPI:
                 response.raise_for_status()
                 return parse_search_results(await response.json())
         except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.error("Error searching SeaTemperatures locations for %s: %s", query, err)
+            # Debug only: the config flow reports the failure to the user itself.
+            _LOGGER.debug("Error searching SeaTemperatures locations for %s: %s", query, err)
             return None
 
     async def get_location_by_place_id(self, place_id: str) -> dict[str, str] | None:
@@ -137,13 +147,17 @@ class SeaTemperatureAPI:
             location = cache.get(f"sea-{place_id}")
         return location
 
-    async def get_temperatures(self, location_path: str) -> dict[str, Any] | None:
-        """Fetch temperature data for a specific location path."""
+    async def get_temperatures(self, location_path: str) -> dict[str, Any]:
+        """Fetch temperature data for a specific location path.
+
+        Raises SeaTemperatureError so the coordinator owns the one log line.
+        """
         try:
             normalized_path = validate_location_path(location_path)
         except ValueError as err:
-            _LOGGER.error("Invalid SeaTemperatures path %s: %s", location_path, err)
-            return None
+            raise SeaTemperatureError(
+                f"Invalid SeaTemperatures path {location_path}: {err}"
+            ) from err
 
         url = f"{BASE_URL}{normalized_path}"
         session = async_get_clientsession(self.hass)
@@ -152,12 +166,9 @@ class SeaTemperatureAPI:
                 response.raise_for_status()
                 html = await response.text()
         except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.error(
-                "Error fetching temperature data for path %s: %s",
-                normalized_path,
-                err,
-            )
-            return None
+            raise SeaTemperatureError(
+                f"Error fetching temperature data for path {normalized_path}: {err}"
+            ) from err
 
         return parse_location_page(html).as_legacy_payload()
 
@@ -173,7 +184,8 @@ class SeaTemperatureAPI:
                 response.raise_for_status()
                 mapping = parse_map_locations(await response.json())
         except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.error("Error fetching SeaTemperatures map locations: %s", err)
+            # Debug only: the config flow and the migration both report this.
+            _LOGGER.debug("Error fetching SeaTemperatures map locations: %s", err)
             return None
 
         domain_data[_MAP_LOCATIONS_CACHE] = mapping

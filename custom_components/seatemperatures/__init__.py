@@ -8,7 +8,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import SeaTemperatureAPI
+from .api import SeaTemperatureAPI, SeaTemperatureError
 from .const import (
     CONF_AREA,
     CONF_CONTINENT,
@@ -166,6 +166,30 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def _async_fetch(
+    api: SeaTemperatureAPI, location_path: str | None, place_name: str
+) -> dict:
+    """Fetch one refresh, turning an API failure into a single logged one.
+
+    The coordinator logs an UpdateFailed once and stays quiet while the failure
+    persists, so the API layer deliberately reports nothing of its own.
+    """
+    if not location_path:
+        raise UpdateFailed(
+            "No location path configured. Remove and re-add the integration."
+        )
+
+    try:
+        data = await api.get_temperatures(location_path)
+    except SeaTemperatureError as err:
+        raise UpdateFailed(str(err)) from err
+
+    if not data:
+        raise UpdateFailed(f"Failed to fetch data for place {place_name}")
+
+    return data
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Sea Temperature from a config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -178,16 +202,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def async_update_data():
         """Fetch data from API."""
-        if not location_path:
-            raise UpdateFailed(
-                "No location path configured. Remove and re-add the integration."
-            )
-
-        data = await api.get_temperatures(location_path)
-        if not data:
-            raise UpdateFailed(f"Failed to fetch data for place {place_name}")
-
-        return data
+        return await _async_fetch(api, location_path, place_name)
 
     coordinator = DataUpdateCoordinator(
         hass,
