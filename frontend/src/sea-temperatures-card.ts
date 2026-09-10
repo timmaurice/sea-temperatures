@@ -20,6 +20,22 @@ import styles from './styles/card.styles.scss';
 const ELEMENT_NAME = 'sea-temperatures-card';
 const EDITOR_ELEMENT_NAME = `${ELEMENT_NAME}-editor`;
 
+// Home Assistant's section grid stacks 56px rows with an 8px gap, so N rows are
+// worth 64N - 8 pixels on screen.
+const GRID_ROW_GAP = 8;
+const GRID_ROW_PITCH = 56 + GRID_ROW_GAP;
+const MIN_GRID_ROWS = 2;
+
+// Heights of the card's parts, measured against a rendered card. They only have
+// to be close: the grid rounds up to whole rows anyway.
+const CARD_PADDING = 32; // .card-content, top and bottom
+const CARD_HEADER_HEIGHT = 68; // ha-card's own title bar
+const PLACE_HEADER_HEIGHT = 62; // name, timestamp and reading, plus its margin
+const PLACE_STATS_HEIGHT = 57;
+const PLACE_CHART_HEIGHT = 136; // 120px chart plus its margin
+const PLACE_WARNING_HEIGHT = 40;
+const PLACE_ROW_SEPARATION = 28; // row padding plus the flex gap between rows
+
 interface SeaTemperatureData {
   name: string;
   country?: string;
@@ -151,25 +167,66 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   }
 
   public getCardSize(): number {
-    return (this._config?.places?.length || 1) * this._rowsPerPlace();
-  }
-
-  /** Approximate masonry/grid rows (~50px each) taken by a single place. */
-  private _rowsPerPlace(): number {
-    let rows = 1; // name + current temperature
-    if (this._config?.show_stats !== false) rows += 1;
-    if (this._config?.show_chart !== false) rows += 3; // 120px chart + margin
-    return rows;
+    // Masonry counts ~50px rows.
+    return Math.max(1, Math.ceil(this._contentHeight() / 50));
   }
 
   public getGridOptions(): Record<string, number> {
-    const places = this._config?.places?.length || 1;
     return {
-      rows: places * this._rowsPerPlace(),
+      rows: Math.max(MIN_GRID_ROWS, Math.ceil((this._contentHeight() + GRID_ROW_GAP) / GRID_ROW_PITCH)),
       columns: 12,
-      min_rows: 2,
+      min_rows: MIN_GRID_ROWS,
       min_columns: 6,
     };
+  }
+
+  /**
+   * The height the card will actually paint, in CSS pixels.
+   *
+   * Counting whole grid rows per switched-on option overstated the card badly:
+   * a place whose sensor carries no `charts` attribute still paid for three
+   * chart rows and left a gap of over 160px below the content. Measuring the
+   * parts that will really render keeps the reserved space close to the truth.
+   */
+  private _contentHeight(): number {
+    const config = this._config;
+    if (!config) return CARD_PADDING + PLACE_HEADER_HEIGHT;
+
+    // Before `hass` arrives there is nothing to inspect, so fall back to the
+    // configured length and assume every part renders.
+    const places = this.hass ? this._getPlacesData(this.hass, config) : undefined;
+    const count = Math.max(places?.length ?? config.places?.length ?? 1, 1);
+
+    let height = CARD_PADDING;
+    if (config.title) height += CARD_HEADER_HEIGHT;
+
+    for (let index = 0; index < count; index++) {
+      const place = places?.[index];
+      if (index > 0) height += PLACE_ROW_SEPARATION;
+
+      if (place?.problem) {
+        height += PLACE_WARNING_HEIGHT;
+        continue;
+      }
+
+      height += PLACE_HEADER_HEIGHT;
+      if (config.show_stats !== false && this._hasStats(place)) height += PLACE_STATS_HEIGHT;
+      if (config.show_chart !== false && this._hasChart(place)) height += PLACE_CHART_HEIGHT;
+    }
+
+    return height;
+  }
+
+  /** The stats grid collapses when a place has none of the three values. */
+  private _hasStats(place?: SeaTemperatureData): boolean {
+    if (!place) return true;
+    return [place.yesterday, place.last_week, place.average_avg].some((value) => value !== undefined);
+  }
+
+  /** _renderChart draws nothing below two points. */
+  private _hasChart(place?: SeaTemperatureData): boolean {
+    if (!place) return true;
+    return (this._chartData[place.entity_id]?.length ?? 0) >= 2;
   }
 
   private _getPlacesData(hass: HomeAssistant, config: SeaTemperaturesCardConfig): SeaTemperatureData[] {

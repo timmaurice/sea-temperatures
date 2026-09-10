@@ -833,4 +833,96 @@ describe('SeaTemperaturesCard', () => {
       expect(SeaTemperaturesCard.getStubConfig(hass, ['sensor.offered'])).toEqual({ places: ['sensor.offered'] });
     });
   });
+
+  describe('Card sizing', () => {
+    const chartFor = (entityId: string) => ({
+      last_thirty: {
+        labels: ['2026-03-12', '2026-03-13', '2026-03-14'],
+        series: [20.5, 21, 21.5],
+        entityId,
+      },
+    });
+
+    const sizedCard = (attributes: Record<string, unknown>, config: Record<string, unknown> = {}) => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: ['sensor.beach'],
+        ...config,
+      } as unknown as SeaTemperaturesCardConfig);
+      card.hass = {
+        states: { 'sensor.beach': { entity_id: 'sensor.beach', state: '21.5', attributes } },
+        entities: {},
+        devices: {},
+        language: 'en',
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+      (card as unknown as { _fetchChartData: () => void })._fetchChartData();
+      return card;
+    };
+
+    /** What Home Assistant's section grid gives a card asking for `rows`. */
+    const pixelsFor = (rows: number) => rows * 56 + (rows - 1) * 8;
+
+    it('does not reserve chart rows for a place that has no chart', () => {
+      const withChart = sizedCard({
+        unit_of_measurement: '°C',
+        yesterday: 21,
+        charts: chartFor('sensor.beach'),
+      });
+      const withoutChart = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+
+      const bare = withoutChart.getGridOptions().rows;
+      const full = withChart.getGridOptions().rows;
+
+      // The chart is 136px of the card; reserving it when nothing draws left a
+      // gap of more than 160px under the content.
+      expect(full).toBeGreaterThan(bare);
+      expect(pixelsFor(bare)).toBeLessThan(pixelsFor(full) - 100);
+    });
+
+    it('does not reserve a stats row for a place with no statistics', () => {
+      const withStats = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+      const withoutStats = sizedCard({ unit_of_measurement: '°C' });
+
+      expect(withoutStats.getGridOptions().rows).toBeLessThan(withStats.getGridOptions().rows);
+    });
+
+    it('reserves room for a title', () => {
+      const untitled = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+      const titled = sizedCard({ unit_of_measurement: '°C', yesterday: 21 }, { title: 'Beaches' });
+
+      expect(titled.getGridOptions().rows).toBeGreaterThan(untitled.getGridOptions().rows);
+    });
+
+    it('covers the whole card without leaving a big gap', () => {
+      // A header (62px) and stats (57px) inside 32px of padding: 151px, which is
+      // three grid rows. Five - what the old count returned - was 161px too many.
+      const card = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+
+      const rows = card.getGridOptions().rows;
+      expect(pixelsFor(rows)).toBeGreaterThanOrEqual(151);
+      expect(pixelsFor(rows) - 151).toBeLessThan(56);
+    });
+
+    it('keeps getCardSize in step with the same content', () => {
+      const bare = sizedCard({ unit_of_measurement: '°C' });
+      const full = sizedCard({
+        unit_of_measurement: '°C',
+        yesterday: 21,
+        charts: chartFor('sensor.beach'),
+      });
+
+      expect(bare.getCardSize()).toBeLessThan(full.getCardSize());
+      expect(bare.getCardSize()).toBeGreaterThan(0);
+    });
+
+    it('never asks for fewer rows than the card can be drawn in', () => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({ type: 'custom:sea-temperatures-card', places: [] } as unknown as SeaTemperaturesCardConfig);
+
+      expect(card.getGridOptions().rows).toBeGreaterThanOrEqual(2);
+      expect(card.getCardSize()).toBeGreaterThan(0);
+    });
+  });
 });
