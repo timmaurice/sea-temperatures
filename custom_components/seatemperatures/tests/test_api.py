@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+from homeassistant.helpers.selector import SelectSelector
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.seatemperatures import _async_fetch, async_migrate_entry
@@ -21,7 +22,6 @@ from custom_components.seatemperatures.config_flow import (
     CONTINENT_NAMES,
     SeaTemperatureConfigFlow,
 )
-from homeassistant.helpers.selector import SelectSelector
 from custom_components.seatemperatures.const import (
     CONF_AREA,
     CONF_CONTINENT,
