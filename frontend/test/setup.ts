@@ -6,19 +6,21 @@ class ResizeObserverMock {
   disconnect = vi.fn();
 }
 vi.stubGlobal('ResizeObserver', ResizeObserverMock);
-// Mock for window.customCards
-if (typeof window !== 'undefined') {
-  window.customCards = [];
-}
 
 // Mock for Home Assistant helpers
 interface TestWindow extends Window {
   loadCardHelpers: Mock;
 }
 
-const testWindow = window as unknown as TestWindow;
-testWindow.loadCardHelpers = vi.fn().mockResolvedValue({
-  createCardElement: vi.fn().mockResolvedValue({
-    constructor: { getConfigElement: vi.fn().mockResolvedValue(undefined) },
-  } as unknown as LovelaceCard),
-});
+// Not every suite needs a DOM: the stylesheet test runs in the node
+// environment, where touching `window` at all would throw.
+if (typeof window !== 'undefined') {
+  window.customCards = [];
+
+  const testWindow = window as unknown as TestWindow;
+  testWindow.loadCardHelpers = vi.fn().mockResolvedValue({
+    createCardElement: vi.fn().mockResolvedValue({
+      constructor: { getConfigElement: vi.fn().mockResolvedValue(undefined) },
+    } as unknown as LovelaceCard),
+  });
+}

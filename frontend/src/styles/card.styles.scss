@@ -86,6 +86,9 @@ $max-color: #ff9800;
 .place-info {
   display: flex;
   flex-direction: column;
+  // A flex item defaults to min-width:auto, so a long place name refused to
+  // shrink and pushed the temperature out of the row instead of wrapping.
+  min-width: 0;
 }
 
 .last-updated {
@@ -98,6 +101,9 @@ $max-color: #ff9800;
   display: flex;
   align-items: baseline;
   gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
 
 .place-name {
@@ -116,6 +122,10 @@ $max-color: #ff9800;
   display: flex;
   align-items: baseline;
   gap: 4px;
+  // The reading, its unit and the trend arrow are one number, not three words:
+  // at ~290px they used to wrap and drop the arrow under the temperature.
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .temp-value {
@@ -200,6 +210,7 @@ $max-color: #ff9800;
   font-size: 1rem;
   margin-left: 8px;
   margin-top: 0;
+  white-space: nowrap;
 }
 
 .warning {
@@ -321,6 +332,16 @@ ha-card.narrow {
 
   .place-name {
     font-size: 1.05rem;
+  }
+
+  // The header is the row that ran out of width first: without this it broke
+  // into three lines at ~290px instead of two.
+  .place-header {
+    gap: 8px;
+  }
+
+  .current-trend {
+    margin-left: 4px;
   }
 
   .temp-value {
