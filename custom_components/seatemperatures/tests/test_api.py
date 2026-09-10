@@ -294,17 +294,26 @@ async def test_async_migrate_entry_from_place_id(mock_hass) -> None:
                 "path": "/africa/algeria/ain-el-turk/",
             }
         ),
-    ):
+    ), patch(
+        # The unique_id migration is exercised in test_entry.py; here it would
+        # only drag a real entity registry into a mocked hass.
+        "custom_components.seatemperatures._async_migrate_unique_ids",
+        AsyncMock(),
+    ) as migrate_unique_ids:
         migrated = await async_migrate_entry(mock_hass, entry)
 
     assert migrated is True
-    mock_hass.config_entries.async_update_entry.assert_called_once()
-    _, kwargs = mock_hass.config_entries.async_update_entry.call_args
+    migrate_unique_ids.assert_awaited_once()
+    assert mock_hass.config_entries.async_update_entry.call_count == 2
+    _, kwargs = mock_hass.config_entries.async_update_entry.call_args_list[0]
     assert kwargs["data"][CONF_PLACE] == "Ain El Turk"
     assert kwargs["data"][CONF_COUNTRY] == "Algeria"
     assert kwargs["data"][CONF_PATH] == "/africa/algeria/ain-el-turk/"
     assert kwargs["unique_id"] == "/africa/algeria/ain-el-turk/"
     assert kwargs["version"] == 2
+    assert mock_hass.config_entries.async_update_entry.call_args_list[1].kwargs == {
+        "version": 3
+    }
 
 
 async def test_async_migrate_entry_fails_when_place_id_cannot_be_mapped(mock_hass) -> None:

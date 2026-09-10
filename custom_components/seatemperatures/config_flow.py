@@ -5,8 +5,12 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -19,7 +23,11 @@ from .const import (
     CONF_COUNTRY,
     CONF_PATH,
     CONF_PLACE,
+    CONF_SCAN_INTERVAL_HOURS,
+    DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
+    MAX_SCAN_INTERVAL_HOURS,
+    MIN_SCAN_INTERVAL_HOURS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,7 +71,15 @@ CONTINENT_NAMES = {
 class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Sea Temperature."""
 
-    VERSION = 2
+    VERSION = 3
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> SeaTemperatureOptionsFlow:
+        """Return the options flow handler."""
+        return SeaTemperatureOptionsFlow()
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -222,4 +238,55 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return " ".join(
             word if index and word in _CONTINENT_MINOR_WORDS else word.title()
             for index, word in enumerate(words)
+        )
+
+
+class SeaTemperatureOptionsFlow(config_entries.OptionsFlowWithReload):
+    """Let an existing entry be re-tuned without being deleted.
+
+    Only the poll interval is offered. Repointing an entry at a different beach
+    is deliberately *not* an option: the entry's unique_id is the location path,
+    and keeping the entity while swapping the place would splice two locations'
+    readings into one long-term statistic - the history this flow exists to
+    protect. A different place is a different entry.
+
+    OptionsFlowWithReload reloads the entry itself once the options are saved,
+    so the coordinator picks the new interval up without a restart.
+    """
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the options step."""
+        if user_input is not None:
+            return self.async_create_entry(
+                data={
+                    CONF_SCAN_INTERVAL_HOURS: int(
+                        user_input[CONF_SCAN_INTERVAL_HOURS]
+                    )
+                }
+            )
+
+        current = self.config_entry.options.get(
+            CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS
+        )
+
+        data_schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCAN_INTERVAL_HOURS, default=current
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=MIN_SCAN_INTERVAL_HOURS,
+                        max=MAX_SCAN_INTERVAL_HOURS,
+                        step=1,
+                        mode=NumberSelectorMode.BOX,
+                        unit_of_measurement="h",
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init", data_schema=data_schema, last_step=True
         )

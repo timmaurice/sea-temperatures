@@ -30,5 +30,16 @@
     "abort": {
       "already_configured": "Dieser Ort ist bereits konfiguriert."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aktualisierungsintervall",
+        "description": "Wie oft die Wassertemperatur abgerufen wird. Zwei Stunden genügen - die Seite veröffentlicht einen Messwert pro Tag.",
+        "data": {
+          "scan_interval_hours": "Aktualisierungsintervall (Stunden)"
+        }
+      }
+    }
   }
 }

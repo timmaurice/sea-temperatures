@@ -30,5 +30,16 @@
     "abort": {
       "already_configured": "This place is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update interval",
+        "description": "How often the sea temperature is fetched. Two hours is plenty - the site publishes one reading a day.",
+        "data": {
+          "scan_interval_hours": "Update interval (hours)"
+        }
+      }
+    }
   }
 }

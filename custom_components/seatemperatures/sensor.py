@@ -20,6 +20,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import slugify
 
+from . import build_unique_id
 from .const import BASE_URL, CONF_AREA, CONF_PATH, CONF_PLACE, CONF_PLACE_ID, DOMAIN
 from .parser import validate_location_path
 
@@ -95,19 +96,21 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
 
         place_prefix = slugify(self._place_name)
 
-        self._attr_unique_id = f"{DOMAIN}_{self._location_key}_{description.key}"
+        # Slugified: the raw location path produced ids like
+        # "seatemperatures_/europe/germany/island-of-sylt/_today". Entry
+        # version 3 rewrites the registry, so existing entities keep their
+        # entity_id and their history.
+        self._attr_unique_id = build_unique_id(self._location_key, description.key)
         self.entity_id = f"sensor.{DOMAIN}_{place_prefix}_{description.key}"
 
     @property
     def native_value(self) -> float | str | None:
         """Return the state of the sensor."""
+        # native_value is read on every state write, so nothing here logs the
+        # payload: it carries the 30-point chart series, and one place turned
+        # debug logging for this integration into an unreadable wall of numbers.
         if not self.coordinator.data:
-            _LOGGER.debug("No coordinator data available for %s", self.entity_id)
             return None
-
-        _LOGGER.debug(
-            "Coordinator data for %s: %s", self.entity_id, self.coordinator.data
-        )
 
         # Try to get data from 'sst' nesting if it exists
         data = self.coordinator.data.get("sst", self.coordinator.data)

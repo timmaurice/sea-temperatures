@@ -6,7 +6,9 @@ from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import slugify
 
 from .api import SeaTemperatureAPI, SeaTemperatureError
 from .const import (
@@ -16,11 +18,14 @@ from .const import (
     CONF_PATH,
     CONF_PLACE,
     CONF_PLACE_ID,
+    CONF_SCAN_INTERVAL_HOURS,
+    DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
 )
 
 PLATFORMS = [Platform.SENSOR]
-SCAN_INTERVAL = timedelta(hours=2)  # Sea temperatures don't change frequently
+# Sea temperatures don't change frequently; the options flow can widen this.
+SCAN_INTERVAL = timedelta(hours=DEFAULT_SCAN_INTERVAL_HOURS)
 _LOGGER = logging.getLogger(__name__)
 
 CARD_FILENAME = "sea-temperatures-card.js"
@@ -122,9 +127,69 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+def async_scan_interval(entry: ConfigEntry) -> timedelta:
+    """Return the poll interval for an entry, honouring the options flow."""
+    hours = entry.options.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS)
+    try:
+        hours = int(hours)
+    except (TypeError, ValueError):
+        hours = DEFAULT_SCAN_INTERVAL_HOURS
+    if hours < 1:
+        hours = DEFAULT_SCAN_INTERVAL_HOURS
+    return timedelta(hours=hours)
+
+
+def build_unique_id(location_key: str, sensor_key: str) -> str:
+    """Return the slugified unique_id used from entry version 3 on."""
+    return f"{DOMAIN}_{slugify(location_key)}_{sensor_key}"
+
+
+async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Slugify the registry unique_ids of an entry's entities.
+
+    Path-based entries produced ids like
+    ``seatemperatures_/europe/germany/island-of-sylt/_today`` next to the older
+    ``seatemperatures_5484_today``. Rewriting the registry entry rather than
+    just the sensor keeps the entity_id - and therefore the recorded history -
+    exactly where it was. A legacy numeric key slugifies to itself, so those
+    entries are left untouched.
+    """
+    registry = er.async_get(hass)
+
+    for registry_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        old_unique_id = registry_entry.unique_id
+        if not old_unique_id.startswith(f"{DOMAIN}_"):
+            continue
+
+        middle, _, sensor_key = old_unique_id[len(DOMAIN) + 1 :].rpartition("_")
+        if not middle or not sensor_key:
+            continue
+
+        new_unique_id = build_unique_id(middle, sensor_key)
+        if new_unique_id == old_unique_id:
+            continue
+
+        if registry.async_get_entity_id(
+            registry_entry.domain, registry_entry.platform, new_unique_id
+        ):
+            _LOGGER.warning(
+                "Cannot migrate unique_id %s to %s: already taken, keeping the old id",
+                old_unique_id,
+                new_unique_id,
+            )
+            continue
+
+        _LOGGER.debug(
+            "Migrating unique_id %s to %s", old_unique_id, new_unique_id
+        )
+        registry.async_update_entity(
+            registry_entry.entity_id, new_unique_id=new_unique_id
+        )
+
+
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate legacy config entries from place IDs to path-based locations."""
-    if entry.version > 2:
+    if entry.version > 3:
         _LOGGER.error("Unsupported SeaTemperatures config entry version: %s", entry.version)
         return False
 
@@ -162,6 +227,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             unique_id=data[CONF_PATH],
             version=2,
         )
+
+    if entry.version < 3:
+        await _async_migrate_unique_ids(hass, entry)
+        hass.config_entries.async_update_entry(entry, version=3)
 
     return True
 
@@ -209,7 +278,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER,
         name=f"seatemperatures_{location_key}",
         update_method=async_update_data,
-        update_interval=SCAN_INTERVAL,
+        update_interval=async_scan_interval(entry),
     )
 
     await coordinator.async_config_entry_first_refresh()
