@@ -6,6 +6,11 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .api import SeaTemperatureAPI
 from .const import (
@@ -20,6 +25,23 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 _CONTINENT_MINOR_WORDS = frozenset({"and", "of", "the"})
+
+
+def _searchable(options: list[str]) -> SelectSelector:
+    """Build a dropdown that filters as the user types.
+
+    vol.In renders a plain list, and the United States alone contributes 4,477
+    places to it - unusable without a search field. Filtering happens in the
+    frontend against the already fetched list, so it costs no extra request.
+    """
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=options,
+            mode=SelectSelectorMode.DROPDOWN,
+            sort=True,
+            custom_value=False,
+        )
+    )
 
 # The first path segment of every location, as published by
 # /api/map-locations.json. Slugs missing here fall back to a title-cased name,
@@ -91,7 +113,7 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_CONTINENT): vol.In(self._continents),
+                vol.Required(CONF_CONTINENT): _searchable(self._continents),
             }
         )
 
@@ -125,7 +147,7 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_COUNTRY): vol.In(self._countries),
+                vol.Required(CONF_COUNTRY): _searchable(self._countries),
             }
         )
 
@@ -177,7 +199,7 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_PLACE): vol.In(
+                vol.Required(CONF_PLACE): _searchable(
                     sorted(self._places.keys()) if self._places else []
                 ),
             }

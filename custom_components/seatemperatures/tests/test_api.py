@@ -16,6 +16,7 @@ from custom_components.seatemperatures.config_flow import (
     CONTINENT_NAMES,
     SeaTemperatureConfigFlow,
 )
+from homeassistant.helpers.selector import SelectSelector
 from custom_components.seatemperatures.const import (
     CONF_AREA,
     CONF_CONTINENT,
@@ -425,3 +426,45 @@ async def test_unknown_continent_slug_keeps_joining_words_small() -> None:
     flow = SeaTemperatureConfigFlow()
 
     assert flow._get_continent_name("islands-of-the-atlantic") == "Islands of the Atlantic"
+
+
+def _selector_for(schema, key: str) -> SelectSelector:
+    """Pull the selector a schema uses for one key."""
+    for marker, validator in schema.schema.items():
+        if str(marker) == key:
+            return validator
+    raise AssertionError(f"{key} is not in the schema")
+
+
+async def test_every_step_offers_a_searchable_dropdown(mock_hass) -> None:
+    """4,477 places in a plain list cannot be picked from without a search."""
+    flow = SeaTemperatureConfigFlow()
+    flow.hass = mock_hass
+
+    locations_cache = {
+        f"sea-{index}": {
+            "name": f"Place {index}",
+            "country": "United States",
+            "area": "",
+            "path": f"/north-america/united-states/place-{index}/",
+        }
+        for index in range(3)
+    }
+
+    with patch.object(
+        SeaTemperatureAPI, "_get_map_locations", AsyncMock(return_value=locations_cache)
+    ):
+        user_result = await flow.async_step_user(None)
+        await flow.async_step_user({CONF_CONTINENT: "North America"})
+        country_result = await flow.async_step_country(None)
+        await flow.async_step_country({CONF_COUNTRY: "United States"})
+        place_result = await flow.async_step_place(None)
+
+    for result, key in (
+        (user_result, CONF_CONTINENT),
+        (country_result, CONF_COUNTRY),
+        (place_result, CONF_PLACE),
+    ):
+        selector = _selector_for(result["data_schema"], key)
+        assert isinstance(selector, SelectSelector), key
+        assert selector.config["mode"] == "dropdown", key
