@@ -4,23 +4,17 @@
       "user": {
         "title": "Seleccionar Continente",
         "description": "Por favor, seleccione el continente de la zona que desea monitorizar.",
-        "data": {
-          "continent": "Continente"
-        }
+        "data": { "continent": "Continente" }
       },
       "country": {
         "title": "Seleccionar País",
         "description": "Por favor, seleccione el país donde se encuentra la zona.",
-        "data": {
-          "country": "País"
-        }
+        "data": { "country": "País" }
       },
       "place": {
         "title": "Seleccionar Lugar",
         "description": "Por favor, seleccione el lugar que desea monitorizar.",
-        "data": {
-          "place": "Lugar"
-        }
+        "data": { "place": "Lugar" }
       }
     },
     "error": {

@@ -4,23 +4,17 @@
       "user": {
         "title": "Sélectionner le continent",
         "description": "Veuillez sélectionner le continent de la zone que vous souhaitez surveiller.",
-        "data": {
-          "continent": "Continent"
-        }
+        "data": { "continent": "Continent" }
       },
       "country": {
         "title": "Sélectionner le pays",
         "description": "Veuillez sélectionner le pays où se trouve la zone.",
-        "data": {
-          "country": "Pays"
-        }
+        "data": { "country": "Pays" }
       },
       "place": {
         "title": "Sélectionner le lieu",
         "description": "Veuillez sélectionner le lieu que vous souhaitez surveiller.",
-        "data": {
-          "place": "Lieu"
-        }
+        "data": { "place": "Lieu" }
       }
     },
     "error": {
