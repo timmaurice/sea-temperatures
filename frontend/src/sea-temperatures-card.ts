@@ -84,11 +84,14 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   };
 
   public setConfig(config: SeaTemperaturesCardConfig): void {
-    if (!config || !config.places || !Array.isArray(config.places) || config.places.length === 0) {
+    if (!config || !Array.isArray(config.places)) {
       // Home Assistant calls setConfig() before assigning `hass`, so there is no
       // language to localize into here and the thrown string is English by necessity.
       throw new Error('You need to define at least one place.');
     }
+    // An empty list is not an error: the card picker previews a stub config on an
+    // instance that may have no place to suggest, and throwing there paints a red
+    // error tile where the preview belongs. render() explains the emptiness instead.
     this._config = {
       show_last_updated: true,
       show_trend: true,
@@ -126,11 +129,25 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return document.createElement(EDITOR_ELEMENT_NAME) as LovelaceCardEditor;
   }
 
-  public static getStubConfig(): Record<string, unknown> {
-    return {
-      title: 'Sea Temperatures',
-      places: [],
-    };
+  /**
+   * The config the card picker previews and drops into a new card.
+   *
+   * Home Assistant may call this before `hass` exists, so it must not touch it
+   * blindly, and it deliberately writes no key whose value is already the
+   * default - a stub full of defaults freezes them into the user's config.
+   */
+  public static getStubConfig(hass?: HomeAssistant, entities?: string[]): Record<string, unknown> {
+    const candidates = [...(entities ?? []), ...Object.keys(hass?.states ?? {})];
+    const place = candidates.find((entityId) => SeaTemperaturesCard._isSuitablePlace(hass, entityId));
+    return { places: place ? [place] : [] };
+  }
+
+  /** A sensor that reports a number and carries this integration's own attributes. */
+  private static _isSuitablePlace(hass: HomeAssistant | undefined, entityId: string): boolean {
+    const resolved = resolveEntity(hass, entityId, { domain: 'sensor', numeric: true });
+    if (!resolved.ok) return false;
+    const attributes = resolved.entity.attributes;
+    return attributes.yesterday !== undefined || attributes.charts !== undefined;
   }
 
   public getCardSize(): number {

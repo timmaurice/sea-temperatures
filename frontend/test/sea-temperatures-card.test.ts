@@ -777,5 +777,60 @@ describe('SeaTemperaturesCard', () => {
 
       card.remove();
     });
+
+    it('explains an empty places list instead of rendering nothing', async () => {
+      const card = await renderCard([], {});
+
+      expect(card.shadowRoot?.querySelector('.entity-warning')).not.toBeNull();
+
+      card.remove();
+    });
+  });
+
+  describe('getStubConfig', () => {
+    it('does not throw when Home Assistant has not been assigned yet', () => {
+      expect(() => SeaTemperaturesCard.getStubConfig()).not.toThrow();
+      expect(SeaTemperaturesCard.getStubConfig()).toEqual({ places: [] });
+    });
+
+    it('produces a config the card accepts', () => {
+      const card = new SeaTemperaturesCard();
+      const stub = SeaTemperaturesCard.getStubConfig();
+      expect(() =>
+        card.setConfig({ type: 'custom:sea-temperatures-card', ...stub } as unknown as SeaTemperaturesCardConfig),
+      ).not.toThrow();
+    });
+
+    it('picks the first suitable sensor and writes nothing else', () => {
+      const hass = {
+        states: {
+          'sensor.humidity': { entity_id: 'sensor.humidity', state: '55', attributes: {} },
+          'sensor.beach': {
+            entity_id: 'sensor.beach',
+            state: '21.5',
+            attributes: { unit_of_measurement: '°C', yesterday: 21 },
+          },
+          'sensor.other_beach': {
+            entity_id: 'sensor.other_beach',
+            state: '19.5',
+            attributes: { unit_of_measurement: '°C', yesterday: 19 },
+          },
+        },
+      } as unknown as HomeAssistant;
+
+      // Only keys that differ from the defaults: nothing but the place itself.
+      expect(SeaTemperaturesCard.getStubConfig(hass)).toEqual({ places: ['sensor.beach'] });
+    });
+
+    it('prefers an entity the picker offers over a scan of every state', () => {
+      const hass = {
+        states: {
+          'sensor.beach': { entity_id: 'sensor.beach', state: '21.5', attributes: { yesterday: 21 } },
+          'sensor.offered': { entity_id: 'sensor.offered', state: '18.5', attributes: { charts: {} } },
+        },
+      } as unknown as HomeAssistant;
+
+      expect(SeaTemperaturesCard.getStubConfig(hass, ['sensor.offered'])).toEqual({ places: ['sensor.offered'] });
+    });
   });
 });
