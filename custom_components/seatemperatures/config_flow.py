@@ -37,25 +37,39 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step (fetch map locations and select continent)."""
-        api = SeaTemperatureAPI(self.hass)
+        errors: dict[str, str] = {}
 
         if self._locations_data is None:
-            self._locations_data = await api._get_map_locations()
-            if not self._locations_data:
-                return self.async_abort(reason="cannot_connect")
+            api = SeaTemperatureAPI(self.hass)
+            locations = await api._get_map_locations()
+            if not locations:
+                # Re-show the form rather than aborting: "cannot_connect" only
+                # exists under config.error in the translations, and an upstream
+                # hiccup should be retryable without restarting the whole flow.
+                errors["base"] = "cannot_connect"
+            else:
+                self._locations_data = locations
 
-            # Extract unique continents from path segments
-            continents_set = set()
-            for loc in self._locations_data.values():
-                path = loc.get("path", "")
-                parts = [p for p in path.split("/") if p]
-                if parts:
-                    continents_set.add(self._get_continent_name(parts[0]))
-            self._continents = sorted(continents_set)
+                # Extract unique continents from path segments
+                continents_set = set()
+                for loc in self._locations_data.values():
+                    path = loc.get("path", "")
+                    parts = [p for p in path.split("/") if p]
+                    if parts:
+                        continents_set.add(self._get_continent_name(parts[0]))
+                self._continents = sorted(continents_set)
 
-        if user_input is not None:
+        # The retry form carries no continent field, so its submission has to fall
+        # through to another fetch instead of being read as a selection.
+        if user_input is not None and CONF_CONTINENT in user_input:
             self._data[CONF_CONTINENT] = user_input[CONF_CONTINENT]
             return await self.async_step_country()
+
+        if errors:
+            # An empty schema still renders a submit button, which is the retry.
+            return self.async_show_form(
+                step_id="user", data_schema=vol.Schema({}), errors=errors
+            )
 
         data_schema = vol.Schema(
             {

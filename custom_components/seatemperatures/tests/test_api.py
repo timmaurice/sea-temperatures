@@ -335,3 +335,45 @@ async def test_async_migrate_entry_fails_when_place_id_cannot_be_mapped(mock_has
 
     assert migrated is False
     mock_hass.config_entries.async_update_entry.assert_not_called()
+
+
+async def test_config_flow_reshows_the_form_when_the_site_is_unreachable(mock_hass) -> None:
+    """An unreachable site must show a translated error, not an abort."""
+    flow = SeaTemperatureConfigFlow()
+    flow.hass = mock_hass
+
+    with patch.object(SeaTemperatureAPI, "_get_map_locations", AsyncMock(return_value=None)):
+        result = await flow.async_step_user(None)
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_config_flow_retries_after_a_failed_fetch(mock_hass) -> None:
+    """Submitting the error form should fetch again instead of raising."""
+    flow = SeaTemperatureConfigFlow()
+    flow.hass = mock_hass
+
+    locations_cache = {
+        "sea-1": {
+            "name": "Copenhagen",
+            "country": "Denmark",
+            "area": "",
+            "path": "/europe/denmark/copenhagen/",
+        }
+    }
+
+    with patch.object(
+        SeaTemperatureAPI,
+        "_get_map_locations",
+        AsyncMock(side_effect=[None, locations_cache]),
+    ):
+        await flow.async_step_user(None)
+        # The retry form has no continent field, so it submits an empty mapping.
+        result = await flow.async_step_user({})
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+    assert not result.get("errors")
+    assert flow._continents == ["Europe"]
