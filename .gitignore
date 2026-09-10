@@ -30,3 +30,6 @@ yarn.lock
 
 # Backups
 *.bak
+
+# Local agent notes
+CLAUDE.md
