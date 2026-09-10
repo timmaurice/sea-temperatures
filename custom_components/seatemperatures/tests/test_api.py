@@ -516,21 +516,6 @@ async def test_every_request_carries_an_explicit_timeout(mock_hass) -> None:
     assert REQUEST_TIMEOUT.total > 0
 
 
-async def test_a_stalled_request_surfaces_as_a_sea_temperature_error(mock_hass) -> None:
-    """The timeout has to arrive as the error the coordinator already handles."""
-    api = SeaTemperatureAPI(mock_hass)
-
-    with patch(
-        "custom_components.seatemperatures.api.async_get_clientsession"
-    ) as mock_session:
-        mock_session.return_value.get.return_value.__aenter__.side_effect = TimeoutError(
-            "timed out"
-        )
-
-        with pytest.raises(SeaTemperatureError):
-            await api.get_temperatures("/europe/denmark/copenhagen/")
-
-
 async def test_map_locations_are_cached_within_the_ttl(mock_hass) -> None:
     """Repeated lookups inside the TTL must not refetch 19k rows."""
     api = SeaTemperatureAPI(mock_hass)

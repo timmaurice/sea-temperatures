@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from datetime import timedelta
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant import config_entries
 
 from custom_components.seatemperatures import (
     _async_migrate_unique_ids,
     async_migrate_entry,
     async_scan_interval,
+    async_setup_entry,
     build_unique_id,
 )
 from custom_components.seatemperatures.config_flow import (
@@ -90,6 +92,33 @@ async def test_scan_interval_falls_back_on_a_bad_option(stored) -> None:
 
     assert async_scan_interval(entry) == timedelta(
         hours=DEFAULT_SCAN_INTERVAL_HOURS
+    )
+
+
+async def test_setup_entry_polls_at_the_configured_interval() -> None:
+    """The option is worthless unless the coordinator is built with it."""
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
+    entry = _entry(options={CONF_SCAN_INTERVAL_HOURS: 6})
+
+    with (
+        patch("custom_components.seatemperatures.SeaTemperatureAPI"),
+        patch("custom_components.seatemperatures.DataUpdateCoordinator") as coordinator,
+    ):
+        coordinator.return_value.async_config_entry_first_refresh = AsyncMock()
+
+        assert await async_setup_entry(hass, entry) is True
+
+    assert coordinator.call_args.kwargs["update_interval"] == timedelta(hours=6)
+    assert hass.data[DOMAIN][entry.entry_id] is coordinator.return_value
+
+
+async def test_saving_the_options_reloads_the_entry() -> None:
+    """The coordinator reads the interval once, at setup. Without the reloading
+    base class a new interval would only take effect after a restart."""
+    assert issubclass(
+        SeaTemperatureOptionsFlow, config_entries.OptionsFlowWithReload
     )
 
 
