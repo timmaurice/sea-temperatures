@@ -20,8 +20,8 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import slugify
 
-from . import build_unique_id
-from .const import BASE_URL, CONF_AREA, CONF_PATH, CONF_PLACE, CONF_PLACE_ID, DOMAIN
+from . import build_unique_id, entry_location_key
+from .const import BASE_URL, CONF_AREA, CONF_PATH, CONF_PLACE, DOMAIN
 from .parser import validate_location_path
 
 _LOGGER = logging.getLogger(__name__)
@@ -87,9 +87,8 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         self.entity_description = description
         self._entry = entry
         self._place_name = entry.data.get(CONF_PLACE, "Unknown")
-        self._location_key = entry.data.get(CONF_PLACE_ID) or entry.data.get(CONF_PATH)
-        if self._location_key is None:
-            self._location_key = self._place_name
+        # Shared with the unique_id migration, so both sides agree on the id.
+        self._location_key = entry_location_key(entry)
 
         # Set friendly name
         self._attr_name = "Temperature"
@@ -98,7 +97,7 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
 
         # Slugified: the raw location path produced ids like
         # "seatemperatures_/europe/germany/island-of-sylt/_today". Entry
-        # version 3 rewrites the registry, so existing entities keep their
+        # version 4 rewrites the registry, so existing entities keep their
         # entity_id and their history.
         self._attr_unique_id = build_unique_id(self._location_key, description.key)
         self.entity_id = f"sensor.{DOMAIN}_{place_prefix}_{description.key}"

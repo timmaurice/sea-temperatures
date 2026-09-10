@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.seatemperatures import build_unique_id
+from custom_components.seatemperatures import build_unique_id, entry_location_key
 from custom_components.seatemperatures.const import (
     CONF_AREA,
     CONF_CONTINENT,
@@ -64,13 +64,37 @@ async def test_unique_id_is_slugified() -> None:
     """A path-based key must not leak slashes into the registry id."""
     sensor = _sensor(_entry())
 
-    assert sensor.unique_id == "seatemperatures_europe_germany_island_of_sylt_today"
+    assert sensor.unique_id == "seatemperatures_europe_germany_island-of-sylt_today"
     assert "/" not in sensor.unique_id
+
+
+async def test_the_sensor_and_the_migration_agree_on_the_id() -> None:
+    """The migration derives the target id from the entry; if the sensor built
+    its own differently, setup would be rejected as a duplicate."""
+    entry = _entry()
+    sensor = _sensor(entry)
+
+    assert sensor.unique_id == build_unique_id(entry_location_key(entry), "today")
+
+
+async def test_two_paths_that_slugify_alike_get_different_sensors() -> None:
+    """"/" and "-" both slugify to "_", so these two real Greek beaches used to
+    claim one id - and the second sensor was rejected at setup."""
+    folded = _sensor(_entry(path="/europe/greece/nea-plagia/", place="Nea Plagia"))
+    nested = _sensor(_entry(path="/europe/greece/nea/plagia/", place="Plagia"))
+
+    assert folded.unique_id != nested.unique_id
 
 
 async def test_a_legacy_numeric_key_slugifies_to_itself() -> None:
     """Older place_id entries must keep the id they already have."""
     assert build_unique_id("5484", "today") == "seatemperatures_5484_today"
+
+
+async def test_a_non_string_location_key_degrades_instead_of_raising() -> None:
+    """slugify() rejects an int, and a hand-edited entry storing place_id as a
+    number must not take sensor setup down with a TypeError."""
+    assert build_unique_id(5484, "today") == "seatemperatures_5484_today"
 
 
 async def test_native_value_does_not_log_the_payload(

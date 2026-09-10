@@ -312,7 +312,7 @@ async def test_async_migrate_entry_from_place_id(mock_hass) -> None:
     assert kwargs["unique_id"] == "/africa/algeria/ain-el-turk/"
     assert kwargs["version"] == 2
     assert mock_hass.config_entries.async_update_entry.call_args_list[1].kwargs == {
-        "version": 3
+        "version": 4
     }
 
 

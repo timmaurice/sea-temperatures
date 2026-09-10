@@ -71,7 +71,7 @@ CONTINENT_NAMES = {
 class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Sea Temperature."""
 
-    VERSION = 3
+    VERSION = 4
 
     @staticmethod
     @callback

@@ -139,22 +139,55 @@ def async_scan_interval(entry: ConfigEntry) -> timedelta:
     return timedelta(hours=hours)
 
 
-def build_unique_id(location_key: str, sensor_key: str) -> str:
-    """Return the slugified unique_id used from entry version 3 on."""
-    return f"{DOMAIN}_{slugify(location_key)}_{sensor_key}"
+def entry_location_key(entry: ConfigEntry) -> str:
+    """Return the key an entry's entity unique_ids are built from.
+
+    The migration and the sensor both call this, so the id they arrive at is
+    the same one by construction rather than by two matching expressions.
+    """
+    return str(
+        entry.data.get(CONF_PLACE_ID)
+        or entry.data.get(CONF_PATH)
+        or entry.data.get(CONF_PLACE)
+        or entry.entry_id
+    )
+
+
+def slug_location_key(location_key: object) -> str:
+    """Slugify a location key without folding "/" and "-" together.
+
+    ``slugify`` maps both to "_", so ``/europe/greece/nea-plagia/`` and
+    ``/europe/greece/nea/plagia/`` - two real, distinct locations - used to
+    produce the very same id. Each path segment is therefore slugified with "-"
+    as its separator and the segments are joined with "_": a "-" can then only
+    come from inside a segment and a "_" only from a segment boundary, which
+    makes the encoding injective instead of merely unlikely to clash. A legacy
+    numeric place_id has no separators at all and slugifies to itself.
+    """
+    segments = [segment for segment in str(location_key).split("/") if segment]
+    return "_".join(slugify(segment, separator="-") for segment in segments)
+
+
+def build_unique_id(location_key: object, sensor_key: str) -> str:
+    """Return the slugified unique_id used from entry version 4 on."""
+    return f"{DOMAIN}_{slug_location_key(location_key)}_{sensor_key}"
 
 
 async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Slugify the registry unique_ids of an entry's entities.
+    """Bring the registry unique_ids of an entry's entities up to date.
 
     Path-based entries produced ids like
-    ``seatemperatures_/europe/germany/island-of-sylt/_today`` next to the older
-    ``seatemperatures_5484_today``. Rewriting the registry entry rather than
-    just the sensor keeps the entity_id - and therefore the recorded history -
-    exactly where it was. A legacy numeric key slugifies to itself, so those
-    entries are left untouched.
+    ``seatemperatures_/europe/germany/island-of-sylt/_today``, and entry
+    version 3 slugified those with "_" for every separator - which folded two
+    distinct paths onto one id. The target id is derived from the *entry*, not
+    parsed back out of the old one, so it is the same id the sensor will claim.
+    Rewriting the registry entry rather than just the sensor keeps the
+    entity_id - and therefore the recorded history - exactly where it was. A
+    legacy numeric key slugifies to itself, so those entries are left
+    untouched.
     """
     registry = er.async_get(hass)
+    location_key = entry_location_key(entry)
 
     for registry_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         old_unique_id = registry_entry.unique_id
@@ -165,23 +198,40 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
         if not middle or not sensor_key:
             continue
 
-        new_unique_id = build_unique_id(middle, sensor_key)
+        new_unique_id = build_unique_id(location_key, sensor_key)
         if new_unique_id == old_unique_id:
             continue
 
-        if registry.async_get_entity_id(
+        holder = registry.async_get_entity_id(
             registry_entry.domain, registry_entry.platform, new_unique_id
-        ):
+        )
+        if holder is not None and holder != registry_entry.entity_id:
+            # The sensor claims the new id unconditionally at setup, so leaving
+            # the old id in place would cost the user this entity: the platform
+            # would reject the duplicate and the stale row would be orphaned.
+            # Ids are collision-free by construction now, so a holder here is a
+            # leftover row - drop it and let the live entity keep its history.
+            conflicting = registry.async_get(holder)
+            owner = getattr(conflicting, "config_entry_id", None)
+            if owner not in (None, entry.entry_id):
+                _LOGGER.error(
+                    "Cannot migrate unique_id %s to %s: %s of another config entry "
+                    "holds it. Both entities keep the id they have.",
+                    old_unique_id,
+                    new_unique_id,
+                    holder,
+                )
+                continue
+
             _LOGGER.warning(
-                "Cannot migrate unique_id %s to %s: already taken, keeping the old id",
-                old_unique_id,
+                "Removing the stale registry entry %s so %s can take the id %s",
+                holder,
+                registry_entry.entity_id,
                 new_unique_id,
             )
-            continue
+            registry.async_remove(holder)
 
-        _LOGGER.debug(
-            "Migrating unique_id %s to %s", old_unique_id, new_unique_id
-        )
+        _LOGGER.debug("Migrating unique_id %s to %s", old_unique_id, new_unique_id)
         registry.async_update_entity(
             registry_entry.entity_id, new_unique_id=new_unique_id
         )
@@ -189,7 +239,7 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate legacy config entries from place IDs to path-based locations."""
-    if entry.version > 3:
+    if entry.version > 4:
         _LOGGER.error("Unsupported SeaTemperatures config entry version: %s", entry.version)
         return False
 
@@ -228,9 +278,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             version=2,
         )
 
-    if entry.version < 3:
+    if entry.version < 4:
+        # Version 3 slugified these ids already, but with a scheme that could
+        # fold two paths onto one id; re-deriving them from the entry fixes a
+        # v3 install as well as a v2 one.
         await _async_migrate_unique_ids(hass, entry)
-        hass.config_entries.async_update_entry(entry, version=3)
+        hass.config_entries.async_update_entry(entry, version=4)
 
     return True
 
