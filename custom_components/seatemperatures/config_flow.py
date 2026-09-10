@@ -81,7 +81,7 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if self._locations_data is None:
             api = SeaTemperatureAPI(self.hass)
-            locations = await api._get_map_locations()
+            locations = await api.get_map_locations()
             if not locations:
                 # Re-show the form rather than aborting: "cannot_connect" only
                 # exists under config.error in the translations, and an upstream

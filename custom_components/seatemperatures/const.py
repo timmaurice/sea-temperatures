@@ -11,6 +11,5 @@ CONF_PATH = "path"
 
 BASE_URL = "https://seatemperatures.net"
 API_URL_MAP_LOCATIONS = f"{BASE_URL}/api/map-locations.json"
-API_URL_SEARCH = f"{BASE_URL}/api/search/"
 DEFAULT_USER_AGENT = "HomeAssistant seatemperatures integration"
 
