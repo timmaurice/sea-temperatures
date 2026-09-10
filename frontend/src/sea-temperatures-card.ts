@@ -223,10 +223,22 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return [place.yesterday, place.last_week, place.average_avg].some((value) => value !== undefined);
   }
 
-  /** _renderChart draws nothing below two points. */
+  /**
+   * _renderChart draws nothing below two points.
+   *
+   * Home Assistant asks for the grid options once, before the first render has
+   * parsed the series, so this reads the attribute rather than waiting for
+   * _chartData - otherwise every card would be sized as if it had no chart.
+   */
   private _hasChart(place?: SeaTemperatureData): boolean {
     if (!place) return true;
-    return (this._chartData[place.entity_id]?.length ?? 0) >= 2;
+
+    const parsed = this._chartData[place.entity_id];
+    if (parsed) return parsed.length >= 2;
+
+    const charts = this.hass?.states[place.entity_id]?.attributes?.charts as
+      { last_thirty?: { labels?: unknown[] } } | undefined;
+    return (charts?.last_thirty?.labels?.length ?? 0) >= 2;
   }
 
   private _getPlacesData(hass: HomeAssistant, config: SeaTemperaturesCardConfig): SeaTemperatureData[] {

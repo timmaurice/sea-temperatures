@@ -114,4 +114,33 @@ test.describe('The card on a real dashboard', () => {
     await page.getByRole('tab', { name: 'Sea' }).click();
     await expect(temperature).toHaveText('22.5', { timeout: 30_000 });
   });
+
+  test('names a place whose entity is gone instead of dropping it', async ({ page }) => {
+    // The card used to render an empty row here, which reads as a broken card.
+    const missing = 'sensor.e2e_card_removed';
+    const urlPathMissing = await useDashboard('card-missing', {
+      views: [{ title: 'Sea', cards: [{ type: 'custom:sea-temperatures-card', places: [missing] }] }],
+    });
+
+    await page.goto(`/${urlPathMissing}/0`);
+    const card = page.locator('sea-temperatures-card');
+    await expect(card.locator('ha-card')).toBeVisible({ timeout: 60_000 });
+    await expect(card.locator('.entity-warning')).toContainText(missing);
+    await expect(card.locator('.place-header')).toHaveCount(0);
+  });
+
+  test('does not glue a unit onto a text state', async ({ page }) => {
+    const textEntity = 'sensor.e2e_card_text';
+    await setState(textEntity, 'warm', { friendly_name: 'Wordy Beach', unit_of_measurement: '°C' });
+    const urlPathText = await useDashboard('card-text', {
+      views: [{ title: 'Sea', cards: [{ type: 'custom:sea-temperatures-card', places: [textEntity] }] }],
+    });
+
+    await page.goto(`/${urlPathText}/0`);
+    const card = page.locator('sea-temperatures-card');
+    await expect(card.locator('.entity-warning')).toBeVisible({ timeout: 60_000 });
+    await expect(card.locator('ha-card')).not.toContainText('warm°C');
+
+    await removeState(textEntity);
+  });
 });
