@@ -795,21 +795,23 @@ if (!customElements.get(ELEMENT_NAME)) {
 }
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: ELEMENT_NAME,
-  name: 'Sea Temperatures Card',
-  description: 'Display current and historical sea temperatures.',
-  preview: true,
-  documentationURL: 'https://github.com/timmaurice/sea-temperatures',
-  getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
-    if (entityId.startsWith('sensor.seatemperatures_') && hass.states[entityId]) {
-      return {
-        config: {
-          type: `custom:${ELEMENT_NAME}`,
-          places: [entityId],
-        },
-      };
-    }
-    return null;
-  },
-});
+if (!window.customCards.some((card) => card.type === ELEMENT_NAME)) {
+  window.customCards.push({
+    type: ELEMENT_NAME,
+    name: 'Sea Temperatures Card',
+    description: 'Display current and historical sea temperatures.',
+    preview: true,
+    documentationURL: 'https://github.com/timmaurice/sea-temperatures',
+    getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
+      if (entityId.startsWith('sensor.seatemperatures_') && hass.states[entityId]) {
+        return {
+          config: {
+            type: `custom:${ELEMENT_NAME}`,
+            places: [entityId],
+          },
+        };
+      }
+      return null;
+    },
+  });
+}
