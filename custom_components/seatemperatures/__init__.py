@@ -315,9 +315,26 @@ async def _async_fetch(
     return data
 
 
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the entry after the options flow saved a new poll interval.
+
+    The coordinator is built with ``update_interval`` once, at setup, so a saved
+    interval is inert until the entry is set up again. Core offers
+    ``OptionsFlowWithReload`` for this, but only from 2025.8 on; an explicit
+    listener works on every version the integration supports and keeps the
+    minimum where hacs.json puts it.
+    """
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Sea Temperature from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+
+    # Registered before the first refresh so an options save during a slow or
+    # failing setup is not silently dropped; async_on_unload drops the
+    # subscription with the entry rather than stacking one per reload.
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     place_name = entry.data.get(CONF_PLACE, "Unknown")
     location_path = entry.data.get(CONF_PATH)

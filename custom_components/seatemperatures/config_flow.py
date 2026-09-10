@@ -241,7 +241,7 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-class SeaTemperatureOptionsFlow(config_entries.OptionsFlowWithReload):
+class SeaTemperatureOptionsFlow(config_entries.OptionsFlow):
     """Let an existing entry be re-tuned without being deleted.
 
     Only the poll interval is offered. Repointing an entry at a different beach
@@ -250,8 +250,11 @@ class SeaTemperatureOptionsFlow(config_entries.OptionsFlowWithReload):
     readings into one long-term statistic - the history this flow exists to
     protect. A different place is a different entry.
 
-    OptionsFlowWithReload reloads the entry itself once the options are saved,
-    so the coordinator picks the new interval up without a restart.
+    The reload that makes a new interval take effect comes from the update
+    listener ``async_setup_entry`` registers, not from a base class:
+    ``OptionsFlowWithReload`` only exists from core 2025.8 on, and buying that
+    convenience with a narrower supported range is a bad trade. Note the two are
+    mutually exclusive - core rejects an entry that has both.
     """
 
     async def async_step_init(

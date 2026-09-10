@@ -60,6 +60,10 @@ def _entry(**kwargs) -> SimpleNamespace:
             CONF_AREA: "Schleswig-Holstein",
         },
         "options": {},
+        # async_setup_entry subscribes to entry updates; the stand-in has to
+        # offer the same two hooks a real ConfigEntry does.
+        "add_update_listener": MagicMock(),
+        "async_on_unload": MagicMock(),
     }
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -115,11 +119,45 @@ async def test_setup_entry_polls_at_the_configured_interval() -> None:
 
 
 async def test_saving_the_options_reloads_the_entry() -> None:
-    """The coordinator reads the interval once, at setup. Without the reloading
-    base class a new interval would only take effect after a restart."""
-    assert issubclass(
-        SeaTemperatureOptionsFlow, config_entries.OptionsFlowWithReload
+    """The coordinator reads the interval once, at setup, so a new interval only
+    takes effect if saving the options reloads the entry.
+
+    Pinned as behaviour rather than as ancestry on purpose: an
+    ``issubclass(..., OptionsFlowWithReload)`` assertion passes on core 2025.8+
+    and does not even import below it, and it would go on passing if the
+    listener that actually performs the reload were removed.
+    """
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
+    hass.config_entries.async_reload = AsyncMock()
+    entry = _entry()
+
+    with (
+        patch("custom_components.seatemperatures.SeaTemperatureAPI"),
+        patch("custom_components.seatemperatures.DataUpdateCoordinator") as coordinator,
+    ):
+        coordinator.return_value.async_config_entry_first_refresh = AsyncMock()
+
+        assert await async_setup_entry(hass, entry) is True
+
+    entry.add_update_listener.assert_called_once()
+    # The unsubscribe is tied to the entry, so a reload does not stack listeners.
+    entry.async_on_unload.assert_called_once_with(
+        entry.add_update_listener.return_value
     )
+
+    listener = entry.add_update_listener.call_args.args[0]
+    await listener(hass, entry)
+
+    hass.config_entries.async_reload.assert_awaited_once_with(entry.entry_id)
+
+
+async def test_the_options_flow_leaves_the_reload_to_the_listener() -> None:
+    """Core raises if an entry has both an update listener and a flow that
+    reloads by itself, so the flow must stay a plain OptionsFlow."""
+    assert issubclass(SeaTemperatureOptionsFlow, config_entries.OptionsFlow)
+    assert getattr(SeaTemperatureOptionsFlow, "automatic_reload", False) is False
 
 
 async def test_the_config_flow_exposes_an_options_flow() -> None:
