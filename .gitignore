@@ -33,3 +33,7 @@ yarn.lock
 
 # Local agent notes
 CLAUDE.md
+
+# Playwright
+test-results/
+playwright-report/

@@ -16,3 +16,9 @@ test_config
 venv
 .env
 env
+
+# Playwright generated artefacts
+test/e2e/.auth.json
+test/e2e/.storage-state.json
+test-results
+playwright-report
