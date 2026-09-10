@@ -38,6 +38,13 @@ jobs:
           # Update package.json
           npm version $CLEAN_VERSION --no-git-tag-version --allow-same-version
 
+          # Update the cache-busting query in the YAML-mode resource example.
+          # Anchored on the bundle filename plus "?v=" and a leading digit, so a
+          # plain mention of the file elsewhere in the README is left alone.
+          sed -i "s|sea-temperatures-card\.js?v=[0-9][0-9A-Za-z.-]*|sea-temperatures-card.js?v=$CLEAN_VERSION|g" README.md
+          grep -q "sea-temperatures-card.js?v=$CLEAN_VERSION" README.md \
+            || { echo "README resource example was not rewritten - did the path change?"; exit 1; }
+
       # 4. Setup Node and Build Frontend
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -52,7 +59,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add pyproject.toml custom_components/seatemperatures/manifest.json package.json package-lock.json custom_components/seatemperatures/sea-temperatures-card.js
+          git add pyproject.toml custom_components/seatemperatures/manifest.json package.json package-lock.json README.md custom_components/seatemperatures/sea-temperatures-card.js
           git commit -m "chore: release ${{ env.VERSION }} [skip ci]" || echo "No changes to commit"
           git push origin HEAD:main
           git tag -f ${{ env.VERSION }}

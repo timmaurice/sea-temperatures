@@ -6,18 +6,23 @@ logger:
   logs:
     custom_components.seatemperatures: debug
 
+# The card resource is deliberately NOT listed here. Pinning it in YAML puts the
+# resource collection in YAML mode, which switches off the integration's own
+# registration - the very code path that used to append a duplicate resource on
+# every restart. Storage mode is what a real installation uses, so it is what the
+# end-to-end suite has to exercise.
 lovelace:
-  resource_mode: yaml
   dashboards:
     lovelace:
       mode: yaml
       filename: ui-lovelace.yaml
       title: Overview
       icon: mdi:view-dashboard
-      show_in_sidebar: true
-  resources:
-    - url: /seatemperatures_frontend/sea-temperatures-card.js
-      type: module
+      # Out of the sidebar: it showed the same card as the storage dashboard
+      # this instance opens on, so it was a second "Overview" that only made
+      # the instance harder to read. The YAML file stays as the reproducible
+      # source, and its content now sits there as its own tab.
+      show_in_sidebar: false
 
 template:
   - sensor:

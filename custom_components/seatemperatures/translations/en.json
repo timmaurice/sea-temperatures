@@ -31,15 +31,15 @@
       "already_configured": "This place is already configured."
     }
   },
-  "entity": {
-    "sensor": {
-      "today": { "name": "Today" },
-      "yesterday": { "name": "Yesterday" },
-      "last_week": { "name": "Last Week" },
-      "last_year": { "name": "Last Year" },
-      "average_avg": { "name": "Average Temperature" },
-      "average_min": { "name": "Minimum Average" },
-      "average_max": { "name": "Maximum Average" }
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update interval",
+        "description": "How often the sea temperature is fetched. Two hours is plenty - the site publishes one reading a day.",
+        "data": {
+          "scan_interval_hours": "Update interval (hours)"
+        }
+      }
     }
   }
 }

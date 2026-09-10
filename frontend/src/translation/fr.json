@@ -33,7 +33,13 @@
     "min": "Min",
     "max": "Max",
     "avg": "Moy",
-    "chart_description": "Tendance sur 30 jours"
+    "chart_description": "Tendance sur 30 jours",
+    "entity_problem": {
+      "not_found": "L'entité {entity} est introuvable.",
+      "wrong_domain": "{entity} n'est pas un capteur.",
+      "not_numeric": "{entity} ne fournit pas de température.",
+      "unavailable": "{entity} est indisponible."
+    }
   },
   "common": {
     "errors": {

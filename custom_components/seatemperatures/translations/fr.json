@@ -25,15 +25,15 @@
       "already_configured": "Ce lieu est déjà configuré."
     }
   },
-  "entity": {
-    "sensor": {
-      "today": { "name": "Aujourd'hui" },
-      "yesterday": { "name": "Hier" },
-      "last_week": { "name": "La semaine dernière" },
-      "last_year": { "name": "L'année dernière" },
-      "average_avg": { "name": "Température moyenne" },
-      "average_min": { "name": "Moyenne minimale" },
-      "average_max": { "name": "Moyenne maximale" }
+  "options": {
+    "step": {
+      "init": {
+        "title": "Intervalle de mise à jour",
+        "description": "Fréquence de récupération de la température de la mer. Deux heures suffisent : le site publie une mesure par jour.",
+        "data": {
+          "scan_interval_hours": "Intervalle de mise à jour (heures)"
+        }
+      }
     }
   }
 }

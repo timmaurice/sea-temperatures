@@ -675,4 +675,254 @@ describe('SeaTemperaturesCard', () => {
       card.remove();
     });
   });
+
+  describe('Locale', () => {
+    it('renders numbers in the profile number format, not the interface language', async () => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: ['sensor.beach'],
+      } as unknown as SeaTemperaturesCardConfig);
+
+      // English interface, German separators - a combination hass.language alone
+      // cannot express.
+      card.hass = {
+        states: {
+          'sensor.beach': {
+            entity_id: 'sensor.beach',
+            state: '21.5',
+            last_updated: '2026-03-15T12:00:00.000Z',
+            attributes: { unit_of_measurement: '°C', yesterday: '20.1' },
+          },
+        },
+        entities: {},
+        devices: {},
+        language: 'en',
+        locale: { language: 'en', number_format: 'decimal_comma', time_format: '24' },
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+
+      document.body.appendChild(card);
+      await card.updateComplete;
+
+      expect(card.shadowRoot?.querySelector('.temp-value')?.textContent).toBe('21,5');
+      expect(card.shadowRoot?.querySelector('.current-trend')?.textContent).toContain('1,4');
+
+      card.remove();
+    });
+  });
+  describe('Unresolvable places', () => {
+    const hassWith = (states: Record<string, unknown>): HomeAssistant =>
+      ({
+        states,
+        entities: {},
+        devices: {},
+        language: 'en',
+        localize: (key: string) => key,
+      }) as unknown as HomeAssistant;
+
+    const renderCard = async (places: unknown[], states: Record<string, unknown>) => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({ type: 'custom:sea-temperatures-card', places } as unknown as SeaTemperaturesCardConfig);
+      card.hass = hassWith(states);
+      document.body.appendChild(card);
+      await card.updateComplete;
+      return card;
+    };
+
+    it('says an entity is missing instead of dropping the row', async () => {
+      const card = await renderCard(['sensor.gone'], {});
+
+      const warning = card.shadowRoot?.querySelector('.entity-warning');
+      expect(warning?.textContent).toContain('sensor.gone');
+      expect(card.shadowRoot?.querySelectorAll('.place-header').length).toBe(0);
+
+      card.remove();
+    });
+
+    it('says an entity is from the wrong domain', async () => {
+      const card = await renderCard(['light.kitchen'], {
+        'light.kitchen': { entity_id: 'light.kitchen', state: 'on', attributes: {} },
+      });
+
+      expect(card.shadowRoot?.querySelector('.entity-warning')?.textContent).toContain('light.kitchen');
+      expect(card.shadowRoot?.querySelector('.temp-unit')).toBeNull();
+
+      card.remove();
+    });
+
+    it('never glues a unit onto a text state', async () => {
+      const card = await renderCard(['sensor.text'], {
+        'sensor.text': { entity_id: 'sensor.text', state: 'warm', attributes: { unit_of_measurement: '°C' } },
+      });
+
+      expect(card.shadowRoot?.textContent).not.toContain('warm°C');
+      expect(card.shadowRoot?.querySelector('.entity-warning')).not.toBeNull();
+
+      card.remove();
+    });
+
+    it('keeps showing a dash for a place that is only unavailable', async () => {
+      const card = await renderCard(['sensor.offline'], {
+        'sensor.offline': {
+          entity_id: 'sensor.offline',
+          state: 'unavailable',
+          last_updated: '2026-03-15T12:00:00.000Z',
+          attributes: { unit_of_measurement: '°C', friendly_name: 'Offline Beach' },
+        },
+      });
+
+      expect(card.shadowRoot?.querySelector('.temp-value.unavailable')).not.toBeNull();
+      expect(card.shadowRoot?.querySelector('.entity-warning')).toBeNull();
+
+      card.remove();
+    });
+
+    it('explains an empty places list instead of rendering nothing', async () => {
+      const card = await renderCard([], {});
+
+      expect(card.shadowRoot?.querySelector('.entity-warning')).not.toBeNull();
+
+      card.remove();
+    });
+  });
+
+  describe('getStubConfig', () => {
+    it('does not throw when Home Assistant has not been assigned yet', () => {
+      expect(() => SeaTemperaturesCard.getStubConfig()).not.toThrow();
+      expect(SeaTemperaturesCard.getStubConfig()).toEqual({ places: [] });
+    });
+
+    it('produces a config the card accepts', () => {
+      const card = new SeaTemperaturesCard();
+      const stub = SeaTemperaturesCard.getStubConfig();
+      expect(() =>
+        card.setConfig({ type: 'custom:sea-temperatures-card', ...stub } as unknown as SeaTemperaturesCardConfig),
+      ).not.toThrow();
+    });
+
+    it('picks the first suitable sensor and writes nothing else', () => {
+      const hass = {
+        states: {
+          'sensor.humidity': { entity_id: 'sensor.humidity', state: '55', attributes: {} },
+          'sensor.beach': {
+            entity_id: 'sensor.beach',
+            state: '21.5',
+            attributes: { unit_of_measurement: '°C', yesterday: 21 },
+          },
+          'sensor.other_beach': {
+            entity_id: 'sensor.other_beach',
+            state: '19.5',
+            attributes: { unit_of_measurement: '°C', yesterday: 19 },
+          },
+        },
+      } as unknown as HomeAssistant;
+
+      // Only keys that differ from the defaults: nothing but the place itself.
+      expect(SeaTemperaturesCard.getStubConfig(hass)).toEqual({ places: ['sensor.beach'] });
+    });
+
+    it('prefers an entity the picker offers over a scan of every state', () => {
+      const hass = {
+        states: {
+          'sensor.beach': { entity_id: 'sensor.beach', state: '21.5', attributes: { yesterday: 21 } },
+          'sensor.offered': { entity_id: 'sensor.offered', state: '18.5', attributes: { charts: {} } },
+        },
+      } as unknown as HomeAssistant;
+
+      expect(SeaTemperaturesCard.getStubConfig(hass, ['sensor.offered'])).toEqual({ places: ['sensor.offered'] });
+    });
+  });
+
+  describe('Card sizing', () => {
+    const chartFor = (entityId: string) => ({
+      last_thirty: {
+        labels: ['2026-03-12', '2026-03-13', '2026-03-14'],
+        series: [20.5, 21, 21.5],
+        entityId,
+      },
+    });
+
+    const sizedCard = (attributes: Record<string, unknown>, config: Record<string, unknown> = {}) => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: ['sensor.beach'],
+        ...config,
+      } as unknown as SeaTemperaturesCardConfig);
+      card.hass = {
+        states: { 'sensor.beach': { entity_id: 'sensor.beach', state: '21.5', attributes } },
+        entities: {},
+        devices: {},
+        language: 'en',
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+      (card as unknown as { _fetchChartData: () => void })._fetchChartData();
+      return card;
+    };
+
+    /** What Home Assistant's section grid gives a card asking for `rows`. */
+    const pixelsFor = (rows: number) => rows * 56 + (rows - 1) * 8;
+
+    it('does not reserve chart rows for a place that has no chart', () => {
+      const withChart = sizedCard({
+        unit_of_measurement: '°C',
+        yesterday: 21,
+        charts: chartFor('sensor.beach'),
+      });
+      const withoutChart = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+
+      const bare = withoutChart.getGridOptions().rows;
+      const full = withChart.getGridOptions().rows;
+
+      // The chart is 136px of the card; reserving it when nothing draws left a
+      // gap of more than 160px under the content.
+      expect(full).toBeGreaterThan(bare);
+      expect(pixelsFor(bare)).toBeLessThan(pixelsFor(full) - 100);
+    });
+
+    it('does not reserve a stats row for a place with no statistics', () => {
+      const withStats = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+      const withoutStats = sizedCard({ unit_of_measurement: '°C' });
+
+      expect(withoutStats.getGridOptions().rows).toBeLessThan(withStats.getGridOptions().rows);
+    });
+
+    it('reserves room for a title', () => {
+      const untitled = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+      const titled = sizedCard({ unit_of_measurement: '°C', yesterday: 21 }, { title: 'Beaches' });
+
+      expect(titled.getGridOptions().rows).toBeGreaterThan(untitled.getGridOptions().rows);
+    });
+
+    it('covers the whole card without leaving a big gap', () => {
+      // A header (62px) and stats (57px) inside 32px of padding: 151px, which is
+      // three grid rows. Five - what the old count returned - was 161px too many.
+      const card = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+
+      const rows = card.getGridOptions().rows;
+      expect(pixelsFor(rows)).toBeGreaterThanOrEqual(151);
+      expect(pixelsFor(rows) - 151).toBeLessThan(56);
+    });
+
+    it('keeps getCardSize in step with the same content', () => {
+      const bare = sizedCard({ unit_of_measurement: '°C' });
+      const full = sizedCard({
+        unit_of_measurement: '°C',
+        yesterday: 21,
+        charts: chartFor('sensor.beach'),
+      });
+
+      expect(bare.getCardSize()).toBeLessThan(full.getCardSize());
+      expect(bare.getCardSize()).toBeGreaterThan(0);
+    });
+
+    it('never asks for fewer rows than the card can be drawn in', () => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({ type: 'custom:sea-temperatures-card', places: [] } as unknown as SeaTemperaturesCardConfig);
+
+      expect(card.getGridOptions().rows).toBeGreaterThanOrEqual(2);
+      expect(card.getCardSize()).toBeGreaterThan(0);
+    });
+  });
 });

@@ -30,6 +30,16 @@ describe('SeaTemperaturesCardEditor', () => {
       expect(customElements.get('sea-temperatures-card-editor')).toBeDefined();
     });
 
+    it('sizes the add button with the current token', async () => {
+      const editor = await setupEditor();
+
+      // "medium" is a legacy alias the design system only maps to a font size:
+      // it leaves the button at its default height. The token is "m".
+      expect(editor.shadowRoot?.querySelector('ha-button')?.getAttribute('size')).toBe('m');
+
+      editor.remove();
+    });
+
     it('renders the places list and title correctly', async () => {
       const editor = await setupEditor();
 
@@ -47,22 +57,68 @@ describe('SeaTemperaturesCardEditor', () => {
   });
 
   describe('Place Management', () => {
-    it('adds a new place when add button is clicked', async () => {
+    it('opens an empty place row without writing it to the config', async () => {
       const editor = await setupEditor();
 
       const addButton = editor.shadowRoot?.querySelector('ha-button') as HTMLElement | null;
       expect(addButton).not.toBeNull();
 
-      // Spy on the private config
       const editorAny = editor as unknown as { _config: SeaTemperaturesCardConfig };
       expect(editorAny._config.places.length).toBe(1);
 
-      // Click add place
+      const emitted: SeaTemperaturesCardConfig[] = [];
+      editor.addEventListener('config-changed', (e) =>
+        emitted.push((e as CustomEvent<{ config: SeaTemperaturesCardConfig }>).detail.config),
+      );
+
       addButton?.click();
       await editor.updateComplete;
 
-      expect(editorAny._config.places.length).toBe(2);
-      expect(editorAny._config.places[1]).toBe('');
+      // The row is on screen so the user can pick a place...
+      expect(editor.shadowRoot?.querySelectorAll('.place-item').length).toBe(2);
+      // ...but a place with no target is not configuration.
+      expect(editorAny._config.places.length).toBe(1);
+      expect(emitted.some((config) => config.places.some((place) => place === ''))).toBe(false);
+
+      editor.remove();
+    });
+
+    it('drops the draft row once it has a target', async () => {
+      const editor = await setupEditor();
+      const editorAny = editor as unknown as {
+        _config: SeaTemperaturesCardConfig;
+        _addPlace: () => void;
+        _placeChanged: (i: number, v: unknown) => void;
+      };
+
+      editorAny._addPlace();
+      editorAny._placeChanged(1, 'sensor.second_beach');
+      await editor.updateComplete;
+
+      expect(editorAny._config.places).toEqual([{ device: 'device-1' }, 'sensor.second_beach']);
+      expect(editor.shadowRoot?.querySelectorAll('.place-item').length).toBe(2);
+
+      editor.remove();
+    });
+
+    it('never saves a key that is already the default', async () => {
+      const editor = await setupEditor({ show_chart: false, title: '' });
+      const editorAny = editor as unknown as { _valueChanged: (e: CustomEvent) => void };
+
+      let saved: SeaTemperaturesCardConfig | undefined;
+      editor.addEventListener('config-changed', (e) => {
+        saved = (e as CustomEvent<{ config: SeaTemperaturesCardConfig }>).detail.config;
+      });
+
+      editorAny._valueChanged(new CustomEvent('value-changed', { detail: { value: { sort_by: 'name' } } }));
+
+      // Only what the user actually chose, plus the keys the card needs.
+      expect(saved).toEqual({
+        type: 'custom:sea-temperatures-card',
+        places: [{ device: 'device-1' }],
+        show_chart: false,
+        sort_by: 'name',
+      });
 
       editor.remove();
     });

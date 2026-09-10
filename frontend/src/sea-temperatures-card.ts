@@ -1,8 +1,17 @@
 import { LitElement, TemplateResult, html, svg, unsafeCSS } from 'lit';
 import { property, state, query } from 'lit/decorators.js';
-import { HomeAssistant, LovelaceCard, LovelaceCardEditor, PlaceConfig, SeaTemperaturesCardConfig } from './types.js';
+import {
+  HassEntity,
+  HomeAssistant,
+  LovelaceCard,
+  LovelaceCardEditor,
+  PlaceConfig,
+  SeaTemperaturesCardConfig,
+} from './types.js';
 import { localize } from './localize.js';
 import { fireEvent } from './utils.js';
+import { EntityProblem, renderEntityWarning, resolveEntity } from './entity-resolution.js';
+import { formatMonthDay, formatNumber, formatShortDateTime, isNumeric } from './format.js';
 import { scaleTime, scaleLinear, type ScaleLinear, type ScaleTime } from 'd3-scale';
 import { line, area, curveMonotoneX, curveLinear, curveStepAfter } from 'd3-shape';
 import { extent, bisector } from 'd3-array';
@@ -10,6 +19,22 @@ import styles from './styles/card.styles.scss';
 
 const ELEMENT_NAME = 'sea-temperatures-card';
 const EDITOR_ELEMENT_NAME = `${ELEMENT_NAME}-editor`;
+
+// Home Assistant's section grid stacks 56px rows with an 8px gap, so N rows are
+// worth 64N - 8 pixels on screen.
+const GRID_ROW_GAP = 8;
+const GRID_ROW_PITCH = 56 + GRID_ROW_GAP;
+const MIN_GRID_ROWS = 2;
+
+// Heights of the card's parts, measured against a rendered card. They only have
+// to be close: the grid rounds up to whole rows anyway.
+const CARD_PADDING = 32; // .card-content, top and bottom
+const CARD_HEADER_HEIGHT = 68; // ha-card's own title bar
+const PLACE_HEADER_HEIGHT = 62; // name, timestamp and reading, plus its margin
+const PLACE_STATS_HEIGHT = 57;
+const PLACE_CHART_HEIGHT = 136; // 120px chart plus its margin
+const PLACE_WARNING_HEIGHT = 40;
+const PLACE_ROW_SEPARATION = 28; // row padding plus the flex gap between rows
 
 interface SeaTemperatureData {
   name: string;
@@ -24,6 +49,8 @@ interface SeaTemperatureData {
   unit?: string;
   entity_id: string;
   unavailable: boolean;
+  /** Set when the configured target could not be resolved to a usable sensor. */
+  problem?: EntityProblem;
 }
 
 interface HistoryPoint {
@@ -73,11 +100,14 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   };
 
   public setConfig(config: SeaTemperaturesCardConfig): void {
-    if (!config || !config.places || !Array.isArray(config.places) || config.places.length === 0) {
+    if (!config || !Array.isArray(config.places)) {
       // Home Assistant calls setConfig() before assigning `hass`, so there is no
       // language to localize into here and the thrown string is English by necessity.
       throw new Error('You need to define at least one place.');
     }
+    // An empty list is not an error: the card picker previews a stub config on an
+    // instance that may have no place to suggest, and throwing there paints a red
+    // error tile where the preview belongs. render() explains the emptiness instead.
     this._config = {
       show_last_updated: true,
       show_trend: true,
@@ -115,33 +145,100 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return document.createElement(EDITOR_ELEMENT_NAME) as LovelaceCardEditor;
   }
 
-  public static getStubConfig(): Record<string, unknown> {
-    return {
-      title: 'Sea Temperatures',
-      places: [],
-    };
+  /**
+   * The config the card picker previews and drops into a new card.
+   *
+   * Home Assistant may call this before `hass` exists, so it must not touch it
+   * blindly, and it deliberately writes no key whose value is already the
+   * default - a stub full of defaults freezes them into the user's config.
+   */
+  public static getStubConfig(hass?: HomeAssistant, entities?: string[]): Record<string, unknown> {
+    const candidates = [...(entities ?? []), ...Object.keys(hass?.states ?? {})];
+    const place = candidates.find((entityId) => SeaTemperaturesCard._isSuitablePlace(hass, entityId));
+    return { places: place ? [place] : [] };
+  }
+
+  /** A sensor that reports a number and carries this integration's own attributes. */
+  private static _isSuitablePlace(hass: HomeAssistant | undefined, entityId: string): boolean {
+    const resolved = resolveEntity(hass, entityId, { domain: 'sensor', numeric: true });
+    if (!resolved.ok) return false;
+    const attributes = resolved.entity.attributes;
+    return attributes.yesterday !== undefined || attributes.charts !== undefined;
   }
 
   public getCardSize(): number {
-    return (this._config?.places?.length || 1) * this._rowsPerPlace();
-  }
-
-  /** Approximate masonry/grid rows (~50px each) taken by a single place. */
-  private _rowsPerPlace(): number {
-    let rows = 1; // name + current temperature
-    if (this._config?.show_stats !== false) rows += 1;
-    if (this._config?.show_chart !== false) rows += 3; // 120px chart + margin
-    return rows;
+    // Masonry counts ~50px rows.
+    return Math.max(1, Math.ceil(this._contentHeight() / 50));
   }
 
   public getGridOptions(): Record<string, number> {
-    const places = this._config?.places?.length || 1;
     return {
-      rows: places * this._rowsPerPlace(),
+      rows: Math.max(MIN_GRID_ROWS, Math.ceil((this._contentHeight() + GRID_ROW_GAP) / GRID_ROW_PITCH)),
       columns: 12,
-      min_rows: 2,
+      min_rows: MIN_GRID_ROWS,
       min_columns: 6,
     };
+  }
+
+  /**
+   * The height the card will actually paint, in CSS pixels.
+   *
+   * Counting whole grid rows per switched-on option overstated the card badly:
+   * a place whose sensor carries no `charts` attribute still paid for three
+   * chart rows and left a gap of over 160px below the content. Measuring the
+   * parts that will really render keeps the reserved space close to the truth.
+   */
+  private _contentHeight(): number {
+    const config = this._config;
+    if (!config) return CARD_PADDING + PLACE_HEADER_HEIGHT;
+
+    // Before `hass` arrives there is nothing to inspect, so fall back to the
+    // configured length and assume every part renders.
+    const places = this.hass ? this._getPlacesData(this.hass, config) : undefined;
+    const count = Math.max(places?.length ?? config.places?.length ?? 1, 1);
+
+    let height = CARD_PADDING;
+    if (config.title) height += CARD_HEADER_HEIGHT;
+
+    for (let index = 0; index < count; index++) {
+      const place = places?.[index];
+      if (index > 0) height += PLACE_ROW_SEPARATION;
+
+      if (place?.problem) {
+        height += PLACE_WARNING_HEIGHT;
+        continue;
+      }
+
+      height += PLACE_HEADER_HEIGHT;
+      if (config.show_stats !== false && this._hasStats(place)) height += PLACE_STATS_HEIGHT;
+      if (config.show_chart !== false && this._hasChart(place)) height += PLACE_CHART_HEIGHT;
+    }
+
+    return height;
+  }
+
+  /** The stats grid collapses when a place has none of the three values. */
+  private _hasStats(place?: SeaTemperatureData): boolean {
+    if (!place) return true;
+    return [place.yesterday, place.last_week, place.average_avg].some((value) => value !== undefined);
+  }
+
+  /**
+   * _renderChart draws nothing below two points.
+   *
+   * Home Assistant asks for the grid options once, before the first render has
+   * parsed the series, so this reads the attribute rather than waiting for
+   * _chartData - otherwise every card would be sized as if it had no chart.
+   */
+  private _hasChart(place?: SeaTemperatureData): boolean {
+    if (!place) return true;
+
+    const parsed = this._chartData[place.entity_id];
+    if (parsed) return parsed.length >= 2;
+
+    const charts = this.hass?.states[place.entity_id]?.attributes?.charts as
+      { last_thirty?: { labels?: unknown[] } } | undefined;
+    return (charts?.last_thirty?.labels?.length ?? 0) >= 2;
   }
 
   private _getPlacesData(hass: HomeAssistant, config: SeaTemperaturesCardConfig): SeaTemperatureData[] {
@@ -169,6 +266,18 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return places;
   }
 
+  /** A row that carries the reason a target could not be used instead of a reading. */
+  private _problemPlace(target: string, customName: string | undefined, problem: EntityProblem): SeaTemperatureData {
+    return {
+      name: customName || target,
+      temperature: '',
+      entity_id: target,
+      // Sorts with the unavailable places, at the end of the list.
+      unavailable: true,
+      problem,
+    };
+  }
+
   private _computePlacesData(hass: HomeAssistant, config: SeaTemperaturesCardConfig): SeaTemperatureData[] {
     const places: SeaTemperatureData[] = [];
     const allEntities = Object.values(hass.states);
@@ -177,11 +286,19 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       const target = typeof place === 'string' ? place : place.device;
       const customName = typeof place === 'object' ? place.name : undefined;
 
-      let tempEntity = hass.states[target];
+      let tempEntity: HassEntity | undefined;
       let deviceId: string | undefined;
 
-      if (tempEntity) {
-        // Target is an entity_id
+      if (target && target.includes('.')) {
+        // Target is an entity_id. A place has to be a numeric sensor: anything
+        // else used to be dropped without a word, or rendered as its raw state
+        // with a degree sign glued on ("on°C").
+        const resolved = resolveEntity(hass, target, { domain: 'sensor', numeric: true });
+        if (!resolved.ok && resolved.reason !== 'unavailable') {
+          places.push(this._problemPlace(target, customName, resolved.reason));
+          return;
+        }
+        tempEntity = hass.states[target];
         deviceId = hass.entities[target]?.device_id;
       } else {
         // Target is likely a device_id
@@ -190,7 +307,10 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
           (entity) => hass.entities[entity.entity_id]?.device_id === deviceId && entity.entity_id.startsWith('sensor.'),
         );
 
-        if (deviceEntities.length === 0) return;
+        if (deviceEntities.length === 0) {
+          places.push(this._problemPlace(target, customName, 'not_found'));
+          return;
+        }
 
         // Find the main temperature sensor:
         // 1. Prioritize entity with 'yesterday' attribute (main sensor)
@@ -205,6 +325,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       }
 
       if (tempEntity) {
+        // The sensor picked off a device gets the same treatment.
+        const resolved = resolveEntity(hass, tempEntity.entity_id, { domain: 'sensor', numeric: true });
+        if (!resolved.ok && resolved.reason !== 'unavailable') {
+          places.push(this._problemPlace(tempEntity.entity_id, customName, resolved.reason));
+          return;
+        }
+
         const attr = tempEntity.attributes;
         const isUnavailable = tempEntity.state === 'unavailable' || tempEntity.state === 'unknown';
         const device = deviceId ? hass.devices[deviceId] : undefined;
@@ -395,7 +522,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   private _chartAriaLabel(place: SeaTemperatureData, data: HistoryPoint[]): string {
     const values = data.map((p) => p.value);
     const unit = place.unit ?? '';
-    const format = (v: number) => `${new Intl.NumberFormat(this.hass?.language).format(v)}${unit}`;
+    const format = (v: number) => `${formatNumber(v, this.hass)}${unit}`;
     return [
       place.name,
       localize(this.hass, 'card.chart_description'),
@@ -421,10 +548,10 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
 
     if (Math.abs(roundedDelta) > 0) {
       const isPos = roundedDelta > 0;
-      const deltaFormatted = new Intl.NumberFormat(this.hass?.language, {
+      const deltaFormatted = formatNumber(Math.abs(roundedDelta), this.hass, {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
-      }).format(Math.abs(roundedDelta));
+      });
       const deltaClass = isPos ? 'pos' : 'neg';
       const deltaIcon = isPos ? '↑' : '↓';
       const deltaSign = isPos ? '+' : '-';
@@ -432,7 +559,8 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         ${deltaIcon} ${deltaSign}${deltaFormatted}${unit}
       </div>`;
     }
-    return html`<div class="stat-delta neu current-trend">→ 0.0${unit}</div>`;
+    const zero = formatNumber(0, this.hass, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return html`<div class="stat-delta neu current-trend">→ ${zero}${unit}</div>`;
   }
 
   protected render(): TemplateResult {
@@ -444,68 +572,82 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card .header=${this._config.title} tabindex="0" class="${isNarrow ? 'narrow' : ''}">
         <div class="card-content">
-          ${places.map(
-            (place) => html`
-              <div class="place-row">
-                <div
-                  class="place-header"
-                  role="button"
-                  tabindex="0"
-                  aria-label=${this._placeAriaLabel(place)}
-                  @click=${() => this._handleMoreInfo(place.entity_id)}
-                  @keydown=${(e: KeyboardEvent) => this._handleHeaderKeydown(e, place.entity_id)}
-                >
-                  <div class="place-info">
-                    <div class="place-name-container">
-                      <span class="place-name">${place.name}</span>
-                      ${place.country ? html`<span class="place-country">${place.country}</span>` : ''}
+          ${
+            places.length === 0
+              ? html`<div class="entity-warning" role="status">
+                  <ha-icon icon="mdi:water-off-outline"></ha-icon>
+                  <span>${localize(this.hass, 'common.errors.no_places')}</span>
+                </div>`
+              : ''
+          }
+          ${places.map((place) =>
+            place.problem
+              ? html`<div class="place-row">${renderEntityWarning(this.hass, place.problem, place.entity_id)}</div>`
+              : html`
+                  <div class="place-row">
+                    <div
+                      class="place-header"
+                      role="button"
+                      tabindex="0"
+                      aria-label=${this._placeAriaLabel(place)}
+                      @click=${() => this._handleMoreInfo(place.entity_id)}
+                      @keydown=${(e: KeyboardEvent) => this._handleHeaderKeydown(e, place.entity_id)}
+                    >
+                      <div class="place-info">
+                        <div class="place-name-container">
+                          <span class="place-name">${place.name}</span>
+                          ${place.country ? html`<span class="place-country">${place.country}</span>` : ''}
+                        </div>
+                        ${
+                          this._config.show_last_updated
+                            ? html`<div class="last-updated">
+                                ${
+                                  this.hass.states[place.entity_id]
+                                    ? formatShortDateTime(
+                                        new Date(this.hass.states[place.entity_id].last_updated),
+                                        this.hass,
+                                      )
+                                    : ''
+                                }
+                              </div>`
+                            : ''
+                        }
+                      </div>
+                      <div class="current-temp">
+                        ${
+                          place.unavailable
+                            ? html`<span class="temp-value unavailable" title=${place.temperature}>&mdash;</span>`
+                            : html`<span class="temp-value"
+                                  >${
+                                    isNumeric(place.temperature)
+                                      ? formatNumber(Number(place.temperature), this.hass)
+                                      : place.temperature
+                                  }</span
+                                >
+                                ${
+                                  // A unit belongs to a reading, not to a word: appending
+                                  // one to a text state produced "warm°C".
+                                  isNumeric(place.temperature) ? html`<span class="temp-unit">${place.unit}</span>` : ''
+                                }
+                                ${this._renderTrend(place.yesterday, place.temperature, place.unit)}`
+                        }
+                      </div>
                     </div>
+
                     ${
-                      this._config.show_last_updated
-                        ? html`<div class="last-updated">
-                            ${
-                              this.hass.states[place.entity_id]
-                                ? new Date(this.hass.states[place.entity_id].last_updated).toLocaleString(
-                                    this.hass.language || undefined,
-                                    { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
-                                  )
-                                : ''
-                            }
-                          </div>`
+                      this._config.show_stats !== false
+                        ? html`
+                            <div class="stats-grid">
+                              ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
+                              ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
+                              ${this._renderStat(localize(this.hass, 'card.average_avg'), place.average_avg, place.unit)}
+                            </div>
+                          `
                         : ''
                     }
+                    ${this._config.show_chart !== false ? this._renderChart(place) : ''}
                   </div>
-                  <div class="current-temp">
-                    ${
-                      place.unavailable
-                        ? html`<span class="temp-value unavailable" title=${place.temperature}>&mdash;</span>`
-                        : html`<span class="temp-value"
-                              >${
-                                !isNaN(Number(place.temperature))
-                                  ? new Intl.NumberFormat(this.hass?.language).format(Number(place.temperature))
-                                  : place.temperature
-                              }</span
-                            >
-                            <span class="temp-unit">${place.unit}</span>
-                            ${this._renderTrend(place.yesterday, place.temperature, place.unit)}`
-                    }
-                  </div>
-                </div>
-
-                ${
-                  this._config.show_stats !== false
-                    ? html`
-                        <div class="stats-grid">
-                          ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
-                          ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
-                          ${this._renderStat(localize(this.hass, 'card.average_avg'), place.average_avg, place.unit)}
-                        </div>
-                      `
-                    : ''
-                }
-                ${this._config.show_chart !== false ? this._renderChart(place) : ''}
-              </div>
-            `,
+                `,
           )}
         </div>
       </ha-card>
@@ -515,12 +657,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   private _renderStat(label: string, value?: string, unit?: string): TemplateResult {
     if (!value || value === 'unknown' || value === 'unavailable') return html``;
     const numVal = Number(value);
-    const formattedVal = !isNaN(numVal) ? new Intl.NumberFormat(this.hass?.language).format(numVal) : value;
+    const isNumericValue = !isNaN(numVal);
+    const formattedVal = isNumericValue ? formatNumber(numVal, this.hass) : value;
 
     return html`
       <div class="stat-item">
         <span class="stat-label">${label}</span>
-        <span class="stat-value">${formattedVal}${unit}</span>
+        <span class="stat-value">${formattedVal}${isNumericValue ? unit : ''}</span>
       </div>
     `;
   }
@@ -625,16 +768,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     textVal.setAttribute('x', String(tooltipX));
     textVal.setAttribute('y', String(textLine1Y));
     textVal.setAttribute('text-anchor', textAnchor);
-    const formattedVal = new Intl.NumberFormat(this.hass?.language).format(closestPoint.value);
+    const formattedVal = formatNumber(closestPoint.value, this.hass);
     textVal.textContent = `${formattedVal}${unit}`;
 
     textDate.setAttribute('x', String(tooltipX));
     textDate.setAttribute('y', String(textLine2Y));
     textDate.setAttribute('text-anchor', textAnchor);
-    textDate.textContent = closestPoint.date.toLocaleDateString(this.hass?.language || undefined, {
-      month: 'short',
-      day: 'numeric',
-    });
+    textDate.textContent = formatMonthDay(closestPoint.date, this.hass);
   }
 
   private _handlePointerLeave(e: PointerEvent) {
@@ -692,7 +832,8 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       if (isNaN(v)) return null;
       const yPos = y(v);
       const unitStr = place.unit || '°C';
-      const displayText = label ? (isNarrow ? `${v.toFixed(1)}${unitStr}` : `${label} ${v.toFixed(1)}${unitStr}`) : '';
+      const value = formatNumber(v, this.hass, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      const displayText = label ? (isNarrow ? `${value}${unitStr}` : `${label} ${value}${unitStr}`) : '';
       return svg`
         <line
           class="ref-line ${className}"
@@ -705,8 +846,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       `;
     };
 
-    const formatDate = (d: Date) =>
-      d.toLocaleDateString(this.hass?.language || undefined, { month: 'short', day: 'numeric' });
+    const formatDate = (d: Date) => formatMonthDay(d, this.hass);
     const startDate = x.domain()[0];
     const endDate = x.domain()[1];
 
@@ -795,21 +935,23 @@ if (!customElements.get(ELEMENT_NAME)) {
 }
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: ELEMENT_NAME,
-  name: 'Sea Temperatures Card',
-  description: 'Display current and historical sea temperatures.',
-  preview: true,
-  documentationURL: 'https://github.com/timmaurice/sea-temperatures',
-  getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
-    if (entityId.startsWith('sensor.seatemperatures_') && hass.states[entityId]) {
-      return {
-        config: {
-          type: `custom:${ELEMENT_NAME}`,
-          places: [entityId],
-        },
-      };
-    }
-    return null;
-  },
-});
+if (!window.customCards.some((card) => card.type === ELEMENT_NAME)) {
+  window.customCards.push({
+    type: ELEMENT_NAME,
+    name: 'Sea Temperatures Card',
+    description: 'Display current and historical sea temperatures.',
+    preview: true,
+    documentationURL: 'https://github.com/timmaurice/sea-temperatures',
+    getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
+      if (entityId.startsWith('sensor.seatemperatures_') && hass.states[entityId]) {
+        return {
+          config: {
+            type: `custom:${ELEMENT_NAME}`,
+            places: [entityId],
+          },
+        };
+      }
+      return null;
+    },
+  });
+}

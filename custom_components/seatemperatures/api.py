@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import aiohttp
@@ -9,7 +10,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     API_URL_MAP_LOCATIONS,
-    API_URL_SEARCH,
     BASE_URL,
     DEFAULT_USER_AGENT,
     DOMAIN,
@@ -19,45 +19,23 @@ from .parser import parse_location_page, validate_location_path
 _LOGGER = logging.getLogger(__name__)
 _MAP_LOCATIONS_CACHE = "map_locations_cache"
 
+# A host that accepts the connection but never answers would otherwise hold a
+# refresh for the aiohttp default (no total timeout at all), and the coordinator
+# would sit on that one request instead of failing and retrying two hours later.
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30, connect=10)
 
-def parse_search_results(data: Any) -> list[dict[str, str]]:
-    """Parse search endpoint results into normalized location dictionaries."""
-    if not isinstance(data, dict):
-        return []
+# The map-locations payload is ~19k rows and was previously cached for the whole
+# process lifetime, so a beach the site added only showed up after a restart.
+MAP_LOCATIONS_TTL = 3600.0
 
-    results: list[dict[str, str]] = []
-    for item in data.get("results", []):
-        if not isinstance(item, dict):
-            continue
 
-        path = item.get("path")
-        name = item.get("name")
-        if not isinstance(path, str) or not isinstance(name, str):
-            continue
+class SeaTemperatureError(Exception):
+    """Raised when a location could not be fetched.
 
-        try:
-            normalized_path = validate_location_path(path)
-        except ValueError:
-            _LOGGER.debug("Ignoring search result with invalid path: %s", path)
-            continue
-
-        results.append(
-            {
-                "name": name,
-                "country": item.get("country", "")
-                if isinstance(item.get("country"), str)
-                else "",
-                "region": item.get("region", "")
-                if isinstance(item.get("region"), str)
-                else "",
-                "area": item.get("area", "")
-                if isinstance(item.get("area"), str)
-                else "",
-                "path": normalized_path,
-            }
-        )
-
-    return results
+    The message is meant to be handed to UpdateFailed: the coordinator already
+    logs a failed refresh, so logging it here as well printed every outage
+    twice.
+    """
 
 
 def parse_map_locations(data: Any) -> dict[str, dict[str, str]]:
@@ -105,30 +83,12 @@ class SeaTemperatureAPI:
         self.hass = hass
         self._headers = {"User-Agent": DEFAULT_USER_AGENT}
 
-    async def search_locations(self, query: str) -> list[dict[str, str]] | None:
-        """Search SeaTemperatures locations by query string."""
-        if not query.strip():
-            return []
-
-        session = async_get_clientsession(self.hass)
-        try:
-            async with session.get(
-                API_URL_SEARCH,
-                params={"q": query.strip()},
-                headers=self._headers,
-            ) as response:
-                response.raise_for_status()
-                return parse_search_results(await response.json())
-        except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.error("Error searching SeaTemperatures locations for %s: %s", query, err)
-            return None
-
     async def get_location_by_place_id(self, place_id: str) -> dict[str, str] | None:
         """Resolve a legacy place ID to a current path-based location."""
         if not place_id:
             return None
 
-        cache = await self._get_map_locations()
+        cache = await self.get_map_locations()
         if cache is None:
             return None
 
@@ -137,44 +97,59 @@ class SeaTemperatureAPI:
             location = cache.get(f"sea-{place_id}")
         return location
 
-    async def get_temperatures(self, location_path: str) -> dict[str, Any] | None:
-        """Fetch temperature data for a specific location path."""
+    async def get_temperatures(self, location_path: str) -> dict[str, Any]:
+        """Fetch temperature data for a specific location path.
+
+        Raises SeaTemperatureError so the coordinator owns the one log line.
+        """
         try:
             normalized_path = validate_location_path(location_path)
         except ValueError as err:
-            _LOGGER.error("Invalid SeaTemperatures path %s: %s", location_path, err)
-            return None
+            raise SeaTemperatureError(
+                f"Invalid SeaTemperatures path {location_path}: {err}"
+            ) from err
 
         url = f"{BASE_URL}{normalized_path}"
         session = async_get_clientsession(self.hass)
         try:
-            async with session.get(url, headers=self._headers) as response:
+            async with session.get(
+                url, headers=self._headers, timeout=REQUEST_TIMEOUT
+            ) as response:
                 response.raise_for_status()
                 html = await response.text()
         except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.error(
-                "Error fetching temperature data for path %s: %s",
-                normalized_path,
-                err,
-            )
-            return None
+            raise SeaTemperatureError(
+                f"Error fetching temperature data for path {normalized_path}: {err}"
+            ) from err
 
         return parse_location_page(html).as_legacy_payload()
 
-    async def _get_map_locations(self) -> dict[str, dict[str, str]] | None:
-        """Fetch and cache the map-locations payload for legacy migration."""
+    async def get_map_locations(self) -> dict[str, dict[str, str]] | None:
+        """Fetch the map-locations payload, cached for MAP_LOCATIONS_TTL seconds.
+
+        The config flow and the legacy place_id migration both read this list,
+        and both run several times in a row - but a cache that never expires
+        means a newly published location stays invisible until Home Assistant
+        restarts, so the entry carries a monotonic timestamp.
+        """
         domain_data = self.hass.data.setdefault(DOMAIN, {})
-        if _MAP_LOCATIONS_CACHE in domain_data:
-            return domain_data[_MAP_LOCATIONS_CACHE]
+        cached = domain_data.get(_MAP_LOCATIONS_CACHE)
+        if cached is not None:
+            cached_at, mapping = cached
+            if time.monotonic() - cached_at < MAP_LOCATIONS_TTL:
+                return mapping
 
         session = async_get_clientsession(self.hass)
         try:
-            async with session.get(API_URL_MAP_LOCATIONS, headers=self._headers) as response:
+            async with session.get(
+                API_URL_MAP_LOCATIONS, headers=self._headers, timeout=REQUEST_TIMEOUT
+            ) as response:
                 response.raise_for_status()
                 mapping = parse_map_locations(await response.json())
         except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.error("Error fetching SeaTemperatures map locations: %s", err)
+            # Debug only: the config flow and the migration both report this.
+            _LOGGER.debug("Error fetching SeaTemperatures map locations: %s", err)
             return None
 
-        domain_data[_MAP_LOCATIONS_CACHE] = mapping
+        domain_data[_MAP_LOCATIONS_CACHE] = (time.monotonic(), mapping)
         return mapping

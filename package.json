@@ -1,6 +1,6 @@
 {
   "name": "sea-temperatures-card",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "A Lovelace card to display sea temperatures.",
   "homepage": "https://github.com/timmaurice/sea-temperatures#readme",
   "bugs": {
@@ -20,32 +20,35 @@
     "format": "prettier . --write",
     "lint": "eslint frontend/",
     "test": "NODE_ENV=production vitest run",
-    "watch": "rollup -c -w"
+    "watch": "rollup -c -w",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-terser": "^1.0.0",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/d3-array": "^3.2.2",
     "@types/d3-scale": "^4.0.9",
-    "@types/d3-shape": "^3.1.8",
-    "eslint": "^10.8.1",
+    "@types/d3-shape": "^3.2.0",
+    "@types/node": "^24.13.4",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-lit": "^2.3.1",
     "eslint-plugin-wc": "^3.1.0",
-    "globals": "^17.11.0",
+    "globals": "^17.12.0",
     "jsdom": "^30.0.1",
     "lit": "^3.3.3",
     "prettier": "^3.9.6",
-    "rollup": "^4.62.4",
+    "rollup": "^4.63.1",
     "rollup-plugin-lit-css": "^6.0.1",
     "rollup-plugin-string": "^3.0.0",
-    "sass": "^1.102.0",
+    "sass": "^1.104.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.11"
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "d3-array": "^3.2.4",

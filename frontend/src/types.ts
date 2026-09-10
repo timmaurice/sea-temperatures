@@ -7,8 +7,10 @@ export interface HassDevice {
 
 export interface FrontendLocaleData {
   language: string;
-  number_format: 'comma_decimal' | 'decimal_comma' | 'space_comma' | 'system';
-  time_format: '12' | '24' | 'system' | 'am_pm';
+  // 'language' and 'none' are part of Home Assistant's own enum: the first
+  // follows the interface language, the second turns formatting off entirely.
+  number_format: 'comma_decimal' | 'decimal_comma' | 'space_comma' | 'system' | 'language' | 'none';
+  time_format: '12' | '24' | 'system' | 'am_pm' | 'language';
   // You can expand this with more properties if needed
 }
 

@@ -86,6 +86,9 @@ $max-color: #ff9800;
 .place-info {
   display: flex;
   flex-direction: column;
+  // A flex item defaults to min-width:auto, so a long place name refused to
+  // shrink and pushed the temperature out of the row instead of wrapping.
+  min-width: 0;
 }
 
 .last-updated {
@@ -98,6 +101,12 @@ $max-color: #ff9800;
   display: flex;
   align-items: baseline;
   gap: 6px;
+  // min-width is safe at every width: it only lets the column shrink instead of
+  // overflowing the card. Wrapping is not - `overflow-wrap: anywhere` lowers the
+  // flex item's min-content size at *any* width, which would break a name and its
+  // country onto two lines in a full-width card that fits them on one. The
+  // wrapping therefore lives in the narrow block only.
+  min-width: 0;
 }
 
 .place-name {
@@ -116,6 +125,10 @@ $max-color: #ff9800;
   display: flex;
   align-items: baseline;
   gap: 4px;
+  // The reading, its unit and the trend arrow are one number, not three words:
+  // at ~290px they used to wrap and drop the arrow under the temperature.
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .temp-value {
@@ -206,6 +219,23 @@ $max-color: #ff9800;
   color: var(--error-color);
   padding: 8px;
   text-align: center;
+}
+
+// A place that could not be resolved says so here instead of leaving a blank row.
+.entity-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  color: var(--warning-color, #ffa600);
+  font-size: 0.9rem;
+  text-align: center;
+
+  ha-icon {
+    flex: 0 0 auto;
+    --mdc-icon-size: 20px;
+  }
 }
 
 .ref-label {
@@ -304,6 +334,18 @@ ha-card.narrow {
 
   .place-name {
     font-size: 1.05rem;
+  }
+
+  // The header is the row that ran out of width first: at ~290px the name and
+  // its country have to be allowed onto a second line, or the row breaks into
+  // three. Scoped here because it costs min-content width everywhere else.
+  .place-name-container {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .current-trend {
+    margin-left: 4px;
   }
 
   .temp-value {

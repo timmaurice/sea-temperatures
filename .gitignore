@@ -30,3 +30,13 @@ yarn.lock
 
 # Backups
 *.bak
+
+# Local agent notes
+CLAUDE.md
+
+# Playwright
+test-results/
+playwright-report/
+
+# Local machine compose override (corporate CA, local paths)
+docker-compose.override.yml
