@@ -338,7 +338,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     place_name = entry.data.get(CONF_PLACE, "Unknown")
     location_path = entry.data.get(CONF_PATH)
-    location_key = entry.data.get(CONF_PLACE_ID) or location_path or entry.entry_id
+    location_key = entry_location_key(entry)
 
     api = SeaTemperatureAPI(hass)
 
