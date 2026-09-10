@@ -23,6 +23,44 @@ PLATFORMS = [Platform.SENSOR]
 SCAN_INTERVAL = timedelta(hours=2)  # Sea temperatures don't change frequently
 _LOGGER = logging.getLogger(__name__)
 
+CARD_FILENAME = "sea-temperatures-card.js"
+CARD_URL_PREFIX = "/seatemperatures_frontend/"
+
+
+async def _async_reconcile_card_resource(resources, new_url: str) -> None:
+    """Leave exactly one Lovelace resource pointing at the bundled card.
+
+    The resource store is loaded lazily: until something awaits it, async_items()
+    returns an empty list. Registering off that empty list appended a second
+    resource on every restart, and the browser then loaded the bundle twice.
+    """
+    # Default to False, not True: assuming a collection we cannot recognise is
+    # already loaded would let us register against an empty item list and save
+    # a store that has lost every other card's resource. Missing async_load
+    # raises instead, and the caller skips registration.
+    if not getattr(resources, "loaded", False):
+        await resources.async_load()
+        resources.loaded = True
+
+    own = [
+        item
+        for item in resources.async_items()
+        if item.get("url", "").startswith(CARD_URL_PREFIX)
+    ]
+
+    if not own:
+        _LOGGER.info("Registering lovelace resource: %s", new_url)
+        await resources.async_create_item({"res_type": "module", "url": new_url})
+        return
+
+    for duplicate in own[1:]:
+        _LOGGER.info("Removing duplicate lovelace resource %s", duplicate.get("url"))
+        await resources.async_delete_item(duplicate.get("id"))
+
+    if own[0].get("url") != new_url:
+        _LOGGER.debug("Updating lovelace resource URL to %s", new_url)
+        await resources.async_update_item(own[0].get("id"), {"url": new_url})
+
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Sea Temperatures component."""
@@ -37,15 +75,13 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(
-                url_path="/seatemperatures_frontend/sea-temperatures-card.js",
-                path=hass.config.path(
-                    "custom_components/seatemperatures/sea-temperatures-card.js"
-                ),
+                url_path=f"{CARD_URL_PREFIX}{CARD_FILENAME}",
+                path=hass.config.path(f"custom_components/{DOMAIN}/{CARD_FILENAME}"),
                 cache_headers=True,
             )
         ]
     )
-    new_url = f"/seatemperatures_frontend/sea-temperatures-card.js?v={version}"
+    new_url = f"{CARD_URL_PREFIX}{CARD_FILENAME}?v={version}"
 
     async def _async_register_lovelace_resource(event=None):
         _LOGGER.debug("Attempting to register lovelace resource")
@@ -68,18 +104,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             )
             return
 
-        # Check if resource is already registered
-        for item in resources.async_items():
-            if item.get("url", "").startswith("/seatemperatures_frontend/"):
-                if item.get("url") != new_url:
-                    _LOGGER.debug("Updating lovelace resource URL to %s", new_url)
-                    await resources.async_update_item(item.get("id"), {"url": new_url})
-                return
-
-        # Not registered, add it
         try:
-            _LOGGER.info("Registering lovelace resource: %s", new_url)
-            await resources.async_create_item({"res_type": "module", "url": new_url})
+            await _async_reconcile_card_resource(resources, new_url)
         except Exception as e:  # noqa: BLE001 - resource registration must never break setup
             _LOGGER.warning("Failed to register lovelace resource: %s", e)
 
