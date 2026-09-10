@@ -21,6 +21,8 @@ from .const import (
     CONF_SCAN_INTERVAL_HOURS,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
+    MAX_SCAN_INTERVAL_HOURS,
+    MIN_SCAN_INTERVAL_HOURS,
 )
 
 PLATFORMS = [Platform.SENSOR]
@@ -134,7 +136,10 @@ def async_scan_interval(entry: ConfigEntry) -> timedelta:
         hours = int(hours)
     except (TypeError, ValueError):
         hours = DEFAULT_SCAN_INTERVAL_HOURS
-    if hours < 1:
+    if not MIN_SCAN_INTERVAL_HOURS <= hours <= MAX_SCAN_INTERVAL_HOURS:
+        # The options flow bounds the form, but a hand-edited or older stored
+        # value reaches this reader directly - clamp both ends, not just the
+        # one that would hammer the site.
         hours = DEFAULT_SCAN_INTERVAL_HOURS
     return timedelta(hours=hours)
 

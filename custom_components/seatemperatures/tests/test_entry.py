@@ -80,9 +80,12 @@ async def test_scan_interval_follows_the_saved_option() -> None:
     assert async_scan_interval(entry) == timedelta(hours=6)
 
 
-@pytest.mark.parametrize("stored", ["nonsense", None, 0, -3])
+@pytest.mark.parametrize(
+    "stored", ["nonsense", None, 0, -3, MAX_SCAN_INTERVAL_HOURS + 1, 999]
+)
 async def test_scan_interval_falls_back_on_a_bad_option(stored) -> None:
-    """A corrupted option must not produce a zero or negative interval."""
+    """A corrupted option must not produce an interval outside the bounds the
+    options flow advertises - neither a zero nor a week-long one."""
     entry = _entry(options={CONF_SCAN_INTERVAL_HOURS: stored})
 
     assert async_scan_interval(entry) == timedelta(
