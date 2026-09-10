@@ -19,6 +19,24 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+_CONTINENT_MINOR_WORDS = frozenset({"and", "of", "the"})
+
+# The first path segment of every location, as published by
+# /api/map-locations.json. Slugs missing here fall back to a title-cased name,
+# so a stale entry is worse than none: it produces a second spelling of a
+# continent that no location actually resolves to.
+CONTINENT_NAMES = {
+    "africa": "Africa",
+    "antarctica": "Antarctica",
+    "asia": "Asia",
+    "australia-and-oceania": "Australia and Oceania",
+    "central-america-and-the-caribbean": "Central America and the Caribbean",
+    "europe": "Europe",
+    "middle-east": "Middle East",
+    "north-america": "North America",
+    "south-america": "South America",
+}
+
 
 class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Sea Temperature."""
@@ -173,15 +191,13 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _get_continent_name(self, slug: str) -> str:
         """Map continent slug to friendly name."""
-        continent_map = {
-            "africa": "Africa",
-            "asia": "Asia",
-            "caribbean-sea": "Caribbean Sea",
-            "central-america": "Central America",
-            "europe": "Europe",
-            "middle-east": "Middle East",
-            "north-america": "North America",
-            "oceania": "Oceania",
-            "south-america": "South America",
-        }
-        return continent_map.get(slug, slug.replace("-", " ").title())
+        if slug in CONTINENT_NAMES:
+            return CONTINENT_NAMES[slug]
+
+        # A slug the site adds later still has to read as a name rather than as
+        # "Central America And The Caribbean", so keep the joining words small.
+        words = slug.split("-")
+        return " ".join(
+            word if index and word in _CONTINENT_MINOR_WORDS else word.title()
+            for index, word in enumerate(words)
+        )

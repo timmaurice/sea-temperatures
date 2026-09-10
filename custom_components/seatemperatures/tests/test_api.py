@@ -12,7 +12,10 @@ from custom_components.seatemperatures.api import (
     parse_map_locations,
     parse_search_results,
 )
-from custom_components.seatemperatures.config_flow import SeaTemperatureConfigFlow
+from custom_components.seatemperatures.config_flow import (
+    CONTINENT_NAMES,
+    SeaTemperatureConfigFlow,
+)
 from custom_components.seatemperatures.const import (
     CONF_AREA,
     CONF_CONTINENT,
@@ -377,3 +380,48 @@ async def test_config_flow_retries_after_a_failed_fetch(mock_hass) -> None:
     assert result["step_id"] == "user"
     assert not result.get("errors")
     assert flow._continents == ["Europe"]
+
+
+# The nine first path segments /api/map-locations.json actually publishes.
+PUBLISHED_CONTINENT_SLUGS = {
+    "africa",
+    "antarctica",
+    "asia",
+    "australia-and-oceania",
+    "central-america-and-the-caribbean",
+    "europe",
+    "middle-east",
+    "north-america",
+    "south-america",
+}
+
+
+async def test_continent_map_matches_the_published_slugs() -> None:
+    """A stale slug adds a continent no location ever resolves to."""
+    assert set(CONTINENT_NAMES) == PUBLISHED_CONTINENT_SLUGS
+
+
+async def test_continent_names_read_as_names() -> None:
+    """Every published slug should map to one readable spelling."""
+    flow = SeaTemperatureConfigFlow()
+
+    names = {flow._get_continent_name(slug) for slug in PUBLISHED_CONTINENT_SLUGS}
+
+    assert names == {
+        "Africa",
+        "Antarctica",
+        "Asia",
+        "Australia and Oceania",
+        "Central America and the Caribbean",
+        "Europe",
+        "Middle East",
+        "North America",
+        "South America",
+    }
+
+
+async def test_unknown_continent_slug_keeps_joining_words_small() -> None:
+    """A slug the site adds later still has to read as a name."""
+    flow = SeaTemperatureConfigFlow()
+
+    assert flow._get_continent_name("islands-of-the-atlantic") == "Islands of the Atlantic"
