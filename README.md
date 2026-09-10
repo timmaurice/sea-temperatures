@@ -60,6 +60,30 @@ Once your sensor is set up, you can add the custom card to your Lovelace dashboa
 1. Edit your dashboard and click **Add Card**.
 2. Search for "Custom: Sea Temperatures Card" or use the Manual YAML editor.
 
+<details>
+<summary>Dashboards in YAML mode</summary>
+
+The integration registers the card as a Lovelace resource by itself only while
+Lovelace is in **storage** mode. With `lovelace: mode: yaml` it logs a warning
+and registers nothing, because the resource list is your file to own. Add it
+yourself:
+
+```yaml
+lovelace:
+  mode: yaml
+  resources:
+    - url: /seatemperatures_frontend/sea-temperatures-card.js?v=3.2.1
+      type: module
+```
+
+**Raise the `?v=` on every update.** Home Assistant serves the bundled card with
+`Cache-Control: max-age=2678400` - 31 days - so a browser that has the file
+keeps the old one for a month unless the URL changes. In storage mode the
+integration does this for you by appending the integration's version; in YAML
+mode the query string is yours to bump.
+
+</details>
+
 **YAML Configuration:**
 
 | Name                | Type    | Default      | Description                                                                                                            |
