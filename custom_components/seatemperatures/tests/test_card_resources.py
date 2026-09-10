@@ -160,14 +160,29 @@ async def test_does_not_register_when_the_store_cannot_be_loaded() -> None:
     assert resources.async_items() == []
 
 
-async def test_loads_a_store_that_does_not_expose_the_loaded_flag() -> None:
-    """Without the flag we must still load, not assume the store is ready."""
-    resources = FakeResources(
-        [{"id": "existing", "res_type": "module", "url": OLD_URL}]
-    )
-    del resources.loaded
+class UnknownCollection:
+    """A resource collection we cannot recognise: no flag, no way to load it.
 
-    await _async_reconcile_card_resource(resources, NEW_URL)
+    Registering against this would mean reading an empty item list and writing a
+    store that no longer holds any other card's resource.
+    """
 
-    assert [item["url"] for item in resources.async_items()] == [NEW_URL]
-    assert resources.async_items()[0]["id"] == "existing"
+    def __init__(self) -> None:
+        self.created: list[dict] = []
+
+    def async_items(self) -> list[dict]:
+        return []
+
+    async def async_create_item(self, data: dict) -> dict:
+        self.created.append(data)
+        return data
+
+
+async def test_refuses_to_register_against_a_collection_it_cannot_load() -> None:
+    """Better no resource than a store with every other card's dropped."""
+    resources = UnknownCollection()
+
+    with pytest.raises(AttributeError):
+        await _async_reconcile_card_resource(resources, NEW_URL)
+
+    assert resources.created == []
