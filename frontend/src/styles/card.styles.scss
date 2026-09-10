@@ -101,9 +101,12 @@ $max-color: #ff9800;
   display: flex;
   align-items: baseline;
   gap: 6px;
+  // min-width is safe at every width: it only lets the column shrink instead of
+  // overflowing the card. Wrapping is not - `overflow-wrap: anywhere` lowers the
+  // flex item's min-content size at *any* width, which would break a name and its
+  // country onto two lines in a full-width card that fits them on one. The
+  // wrapping therefore lives in the narrow block only.
   min-width: 0;
-  flex-wrap: wrap;
-  overflow-wrap: anywhere;
 }
 
 .place-name {
@@ -210,7 +213,6 @@ $max-color: #ff9800;
   font-size: 1rem;
   margin-left: 8px;
   margin-top: 0;
-  white-space: nowrap;
 }
 
 .warning {
@@ -334,10 +336,12 @@ ha-card.narrow {
     font-size: 1.05rem;
   }
 
-  // The header is the row that ran out of width first: without this it broke
-  // into three lines at ~290px instead of two.
-  .place-header {
-    gap: 8px;
+  // The header is the row that ran out of width first: at ~290px the name and
+  // its country have to be allowed onto a second line, or the row breaks into
+  // three. Scoped here because it costs min-content width everywhere else.
+  .place-name-container {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
   }
 
   .current-trend {

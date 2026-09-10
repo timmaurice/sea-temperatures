@@ -16,6 +16,12 @@ import * as sass from 'sass';
  * so the name would not shrink, and `.current-temp` was allowed to wrap
  * between the reading, its unit and the arrow.
  *
+ * Which declarations may be global matters as much as their values. Letting a
+ * column shrink and keeping one number on one line are right at every width,
+ * but `overflow-wrap: anywhere` lowers a flex item's min-content size at any
+ * width - a name and its country that fit on one line in a full-width card
+ * would start wrapping - so the wrapping is asserted to be narrow-only.
+ *
  * Compiling the real SCSS rather than asserting on the source text means a
  * value moved into a mixin, a variable or a nested block still counts.
  */
@@ -49,19 +55,35 @@ describe('the place header at narrow widths', () => {
     expect(declaration('.place-name-container', 'min-width')).toBe('0');
   });
 
-  it('wraps a long place name rather than overflowing the card', () => {
-    expect(declaration('.place-name-container', 'overflow-wrap')).toBe('anywhere');
-    expect(declaration('.place-name-container', 'flex-wrap')).toBe('wrap');
+  it('wraps a long place name once the card is narrow', () => {
+    expect(declaration('ha-card.narrow .place-name-container', 'overflow-wrap')).toBe('anywhere');
+    expect(declaration('ha-card.narrow .place-name-container', 'flex-wrap')).toBe('wrap');
   });
 
   it('keeps the reading, its unit and the trend arrow on one line', () => {
     expect(declaration('.current-temp', 'white-space')).toBe('nowrap');
     expect(declaration('.current-temp', 'flex')).toBe('0 0 auto');
-    expect(declaration('.current-trend', 'white-space')).toBe('nowrap');
+  });
+});
+
+describe('the place header at full width', () => {
+  it('does not let the name wrap, so a name and country stay on one line', () => {
+    // The wide layout has room for both; wrapping here would be a regression,
+    // not the fix. `overflow-wrap: anywhere` also changes the min-content size
+    // used to lay the row out, so it must not leak out of the narrow block.
+    expect(declaration('.place-name-container', 'overflow-wrap')).toBeUndefined();
+    expect(declaration('.place-name-container', 'flex-wrap')).toBeUndefined();
   });
 
-  it('still ships the narrow variant it had before', () => {
-    expect(css).toContain('ha-card.narrow');
-    expect(css).toMatch(/ha-card\.narrow \.place-header/);
+  it('leaves the header gap to the base rule at every width', () => {
+    // A gap in the narrow block would take width away from the very name the
+    // narrow fix is trying to fit.
+    expect(declaration('.place-header', 'gap')).toBeUndefined();
+    expect(css).not.toMatch(/ha-card\.narrow \.place-header\s*\{[^{}]*gap/);
+  });
+
+  it('does not repeat nowrap on a child of .current-temp', () => {
+    // .current-trend sits inside .current-temp, which is already nowrap.
+    expect(declaration('.current-trend', 'white-space')).toBeUndefined();
   });
 });
