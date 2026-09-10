@@ -675,4 +675,40 @@ describe('SeaTemperaturesCard', () => {
       card.remove();
     });
   });
+
+  describe('Locale', () => {
+    it('renders numbers in the profile number format, not the interface language', async () => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({
+        type: 'custom:sea-temperatures-card',
+        places: ['sensor.beach'],
+      } as unknown as SeaTemperaturesCardConfig);
+
+      // English interface, German separators - a combination hass.language alone
+      // cannot express.
+      card.hass = {
+        states: {
+          'sensor.beach': {
+            entity_id: 'sensor.beach',
+            state: '21.5',
+            last_updated: '2026-03-15T12:00:00.000Z',
+            attributes: { unit_of_measurement: '°C', yesterday: '20.1' },
+          },
+        },
+        entities: {},
+        devices: {},
+        language: 'en',
+        locale: { language: 'en', number_format: 'decimal_comma', time_format: '24' },
+        localize: (key: string) => key,
+      } as unknown as HomeAssistant;
+
+      document.body.appendChild(card);
+      await card.updateComplete;
+
+      expect(card.shadowRoot?.querySelector('.temp-value')?.textContent).toBe('21,5');
+      expect(card.shadowRoot?.querySelector('.current-trend')?.textContent).toContain('1,4');
+
+      card.remove();
+    });
+  });
 });

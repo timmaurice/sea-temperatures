@@ -3,6 +3,7 @@ import { property, state, query } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCard, LovelaceCardEditor, PlaceConfig, SeaTemperaturesCardConfig } from './types.js';
 import { localize } from './localize.js';
 import { fireEvent } from './utils.js';
+import { formatMonthDay, formatNumber, formatShortDateTime } from './format.js';
 import { scaleTime, scaleLinear, type ScaleLinear, type ScaleTime } from 'd3-scale';
 import { line, area, curveMonotoneX, curveLinear, curveStepAfter } from 'd3-shape';
 import { extent, bisector } from 'd3-array';
@@ -395,7 +396,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   private _chartAriaLabel(place: SeaTemperatureData, data: HistoryPoint[]): string {
     const values = data.map((p) => p.value);
     const unit = place.unit ?? '';
-    const format = (v: number) => `${new Intl.NumberFormat(this.hass?.language).format(v)}${unit}`;
+    const format = (v: number) => `${formatNumber(v, this.hass)}${unit}`;
     return [
       place.name,
       localize(this.hass, 'card.chart_description'),
@@ -421,10 +422,10 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
 
     if (Math.abs(roundedDelta) > 0) {
       const isPos = roundedDelta > 0;
-      const deltaFormatted = new Intl.NumberFormat(this.hass?.language, {
+      const deltaFormatted = formatNumber(Math.abs(roundedDelta), this.hass, {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
-      }).format(Math.abs(roundedDelta));
+      });
       const deltaClass = isPos ? 'pos' : 'neg';
       const deltaIcon = isPos ? '↑' : '↓';
       const deltaSign = isPos ? '+' : '-';
@@ -432,7 +433,8 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         ${deltaIcon} ${deltaSign}${deltaFormatted}${unit}
       </div>`;
     }
-    return html`<div class="stat-delta neu current-trend">→ 0.0${unit}</div>`;
+    const zero = formatNumber(0, this.hass, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return html`<div class="stat-delta neu current-trend">→ ${zero}${unit}</div>`;
   }
 
   protected render(): TemplateResult {
@@ -465,9 +467,9 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                         ? html`<div class="last-updated">
                             ${
                               this.hass.states[place.entity_id]
-                                ? new Date(this.hass.states[place.entity_id].last_updated).toLocaleString(
-                                    this.hass.language || undefined,
-                                    { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+                                ? formatShortDateTime(
+                                    new Date(this.hass.states[place.entity_id].last_updated),
+                                    this.hass,
                                   )
                                 : ''
                             }
@@ -482,7 +484,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                         : html`<span class="temp-value"
                               >${
                                 !isNaN(Number(place.temperature))
-                                  ? new Intl.NumberFormat(this.hass?.language).format(Number(place.temperature))
+                                  ? formatNumber(Number(place.temperature), this.hass)
                                   : place.temperature
                               }</span
                             >
@@ -515,7 +517,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   private _renderStat(label: string, value?: string, unit?: string): TemplateResult {
     if (!value || value === 'unknown' || value === 'unavailable') return html``;
     const numVal = Number(value);
-    const formattedVal = !isNaN(numVal) ? new Intl.NumberFormat(this.hass?.language).format(numVal) : value;
+    const formattedVal = !isNaN(numVal) ? formatNumber(numVal, this.hass) : value;
 
     return html`
       <div class="stat-item">
@@ -625,16 +627,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     textVal.setAttribute('x', String(tooltipX));
     textVal.setAttribute('y', String(textLine1Y));
     textVal.setAttribute('text-anchor', textAnchor);
-    const formattedVal = new Intl.NumberFormat(this.hass?.language).format(closestPoint.value);
+    const formattedVal = formatNumber(closestPoint.value, this.hass);
     textVal.textContent = `${formattedVal}${unit}`;
 
     textDate.setAttribute('x', String(tooltipX));
     textDate.setAttribute('y', String(textLine2Y));
     textDate.setAttribute('text-anchor', textAnchor);
-    textDate.textContent = closestPoint.date.toLocaleDateString(this.hass?.language || undefined, {
-      month: 'short',
-      day: 'numeric',
-    });
+    textDate.textContent = formatMonthDay(closestPoint.date, this.hass);
   }
 
   private _handlePointerLeave(e: PointerEvent) {
@@ -692,7 +691,8 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       if (isNaN(v)) return null;
       const yPos = y(v);
       const unitStr = place.unit || '°C';
-      const displayText = label ? (isNarrow ? `${v.toFixed(1)}${unitStr}` : `${label} ${v.toFixed(1)}${unitStr}`) : '';
+      const value = formatNumber(v, this.hass, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      const displayText = label ? (isNarrow ? `${value}${unitStr}` : `${label} ${value}${unitStr}`) : '';
       return svg`
         <line
           class="ref-line ${className}"
@@ -705,8 +705,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       `;
     };
 
-    const formatDate = (d: Date) =>
-      d.toLocaleDateString(this.hass?.language || undefined, { month: 'short', day: 'numeric' });
+    const formatDate = (d: Date) => formatMonthDay(d, this.hass);
     const startDate = x.domain()[0];
     const endDate = x.domain()[1];
 
