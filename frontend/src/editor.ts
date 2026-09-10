@@ -35,26 +35,58 @@ const SCHEMA_BOTTOM = [
   },
 ];
 
+/** What the card assumes when a key is absent. The editor must never write these back. */
+const DEFAULTS: Partial<SeaTemperaturesCardConfig> = {
+  sort_by: 'default',
+  show_trend: true,
+  show_last_updated: true,
+  show_stats: true,
+  show_chart: true,
+  show_country: false,
+  chart_smoothing: 'smooth',
+};
+
+/**
+ * Strips every key whose value is already the card's default.
+ *
+ * ha-form is fed a config with the defaults filled in so the toggles show their
+ * real position, but saving that back bakes today's defaults into the user's
+ * YAML - and then a later change to a default silently passes them by.
+ */
+function withoutDefaults(config: SeaTemperaturesCardConfig): SeaTemperaturesCardConfig {
+  const cleaned = { ...config } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(DEFAULTS)) {
+    if (cleaned[key] === value) delete cleaned[key];
+  }
+  // An empty title is not a title.
+  if (cleaned.title === '') delete cleaned.title;
+  // A place row the user has not filled in yet is not part of the config.
+  if (Array.isArray(cleaned.places)) {
+    cleaned.places = (cleaned.places as PlaceConfig[]).filter(
+      (place) => SeaTemperaturesCardEditor._targetOf(place) !== '',
+    );
+  }
+  return cleaned as SeaTemperaturesCardConfig;
+}
+
 export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: SeaTemperaturesCardConfig;
+  /** An added-but-not-yet-filled row. Editor state: it never reaches the config. */
+  @state() private _draftPlace = false;
 
   public setConfig(config: SeaTemperaturesCardConfig): void {
-    this._config = {
-      sort_by: 'default',
-      show_trend: true,
-      show_last_updated: true,
-      show_stats: true,
-      show_chart: true,
-      show_country: false,
-      chart_smoothing: 'smooth',
-      ...config,
-    };
+    this._config = { ...DEFAULTS, ...config };
+  }
+
+  /** Tells Home Assistant about the config, with nothing in it that need not be. */
+  private _emit(config: SeaTemperaturesCardConfig): void {
+    fireEvent(this, 'config-changed', { config: withoutDefaults(config) });
   }
 
   private _valueChanged(ev: CustomEvent): void {
     if (!this.hass || !this._config) return;
-    fireEvent(this, 'config-changed', { config: { ...this._config, ...ev.detail.value } });
+    this._emit({ ...this._config, ...ev.detail.value });
   }
 
   private _placeMoved(ev: CustomEvent): void {
@@ -67,11 +99,11 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
     places.splice(newIndex, 0, moved);
 
     this._config = { ...this._config, places };
-    fireEvent(this, 'config-changed', { config: this._config });
+    this._emit(this._config);
   }
 
   /** The entity_id or device_id a place points at. */
-  private static _targetOf(place: PlaceConfig | undefined): string {
+  public static _targetOf(place: PlaceConfig | undefined): string {
     if (!place) return '';
     return typeof place === 'string' ? place : place.device || '';
   }
@@ -95,13 +127,18 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
     const places = [...(this._config.places || [])];
     places[index] = value;
     this._config = { ...this._config, places };
-    fireEvent(this, 'config-changed', { config: this._config });
+    this._emit(this._config);
   }
 
   private _placeChanged(index: number, value: PlaceConfig | undefined): void {
     const target = SeaTemperaturesCardEditor._targetOf(value);
 
     if (!target) {
+      // Clearing the draft row just abandons it; there is nothing to remove.
+      if (index >= (this._config.places?.length ?? 0)) {
+        this._draftPlace = false;
+        return;
+      }
       this._removePlace(index);
       return;
     }
@@ -121,6 +158,7 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
     // Preserve any custom name: the selector only ever reports a bare target,
     // so writing its value straight through would drop the name.
     const name = SeaTemperaturesCardEditor._nameOf(places[index]);
+    this._draftPlace = false;
     this._commitPlace(index, SeaTemperaturesCardEditor._buildPlace(target, name));
   }
 
@@ -128,13 +166,21 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
     const places = [...(this._config.places || [])];
     places.splice(index, 1);
     this._config = { ...this._config, places };
-    fireEvent(this, 'config-changed', { config: this._config });
+    this._emit(this._config);
   }
 
   private _addPlace(): void {
-    const places = [...(this._config.places || []), ''];
-    this._config = { ...this._config, places };
-    fireEvent(this, 'config-changed', { config: this._config });
+    // Only opens an empty selector. Writing the blank row into the config first
+    // would save a place with no target, and Home Assistant would hand the
+    // stripped config straight back, taking the new row away again.
+    this._draftPlace = true;
+  }
+
+  /** The configured places plus the draft row, if one is open. */
+  private _placeRows(): PlaceConfig[] {
+    const rows = [...(this._config.places ?? [])];
+    if (this._draftPlace) rows.push('');
+    return rows;
   }
 
   protected render(): TemplateResult {
@@ -195,7 +241,7 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
             </div>
             <ha-sortable handle-selector=".handle" @item-moved=${this._placeMoved}>
               <div class="places">
-                ${this._config.places?.map((place, index) => {
+                ${this._placeRows().map((place, index) => {
                   const target = SeaTemperaturesCardEditor._targetOf(place);
                   // Render whichever selector matches how the place is configured, so an
                   // entity-based config stays editable instead of showing an empty row.
