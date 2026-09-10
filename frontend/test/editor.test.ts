@@ -30,6 +30,16 @@ describe('SeaTemperaturesCardEditor', () => {
       expect(customElements.get('sea-temperatures-card-editor')).toBeDefined();
     });
 
+    it('sizes the add button with the current token', async () => {
+      const editor = await setupEditor();
+
+      // "medium" is a legacy alias the design system only maps to a font size:
+      // it leaves the button at its default height. The token is "m".
+      expect(editor.shadowRoot?.querySelector('ha-button')?.getAttribute('size')).toBe('m');
+
+      editor.remove();
+    });
+
     it('renders the places list and title correctly', async () => {
       const editor = await setupEditor();
 

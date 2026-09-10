@@ -266,7 +266,7 @@ export class SeaTemperaturesCardEditor extends LitElement implements LovelaceCar
               </div>
             </ha-sortable>
             <div class="add-place-container">
-              <ha-button @click=${this._addPlace} variant="brand" appearance="accent" size="medium">
+              <ha-button @click=${this._addPlace} variant="brand" appearance="accent" size="m">
                 <ha-icon icon="mdi:plus"></ha-icon>
                 ${localize(this.hass, 'editor.add_place')}
               </ha-button>
