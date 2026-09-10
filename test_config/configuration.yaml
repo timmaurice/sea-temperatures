@@ -18,7 +18,11 @@ lovelace:
       filename: ui-lovelace.yaml
       title: Overview
       icon: mdi:view-dashboard
-      show_in_sidebar: true
+      # Out of the sidebar: it showed the same card as the storage dashboard
+      # this instance opens on, so it was a second "Overview" that only made
+      # the instance harder to read. The YAML file stays as the reproducible
+      # source, and its content now sits there as its own tab.
+      show_in_sidebar: false
 
 template:
   - sensor:
