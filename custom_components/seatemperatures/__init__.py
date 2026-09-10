@@ -26,8 +26,6 @@ from .const import (
 )
 
 PLATFORMS = [Platform.SENSOR]
-# Sea temperatures don't change frequently; the options flow can widen this.
-SCAN_INTERVAL = timedelta(hours=DEFAULT_SCAN_INTERVAL_HOURS)
 _LOGGER = logging.getLogger(__name__)
 
 CARD_FILENAME = "sea-temperatures-card.js"
