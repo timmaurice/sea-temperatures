@@ -1,9 +1,17 @@
 import { LitElement, TemplateResult, html, svg, unsafeCSS } from 'lit';
 import { property, state, query } from 'lit/decorators.js';
-import { HomeAssistant, LovelaceCard, LovelaceCardEditor, PlaceConfig, SeaTemperaturesCardConfig } from './types.js';
+import {
+  HassEntity,
+  HomeAssistant,
+  LovelaceCard,
+  LovelaceCardEditor,
+  PlaceConfig,
+  SeaTemperaturesCardConfig,
+} from './types.js';
 import { localize } from './localize.js';
 import { fireEvent } from './utils.js';
-import { formatMonthDay, formatNumber, formatShortDateTime } from './format.js';
+import { EntityProblem, renderEntityWarning, resolveEntity } from './entity-resolution.js';
+import { formatMonthDay, formatNumber, formatShortDateTime, isNumeric } from './format.js';
 import { scaleTime, scaleLinear, type ScaleLinear, type ScaleTime } from 'd3-scale';
 import { line, area, curveMonotoneX, curveLinear, curveStepAfter } from 'd3-shape';
 import { extent, bisector } from 'd3-array';
@@ -25,6 +33,8 @@ interface SeaTemperatureData {
   unit?: string;
   entity_id: string;
   unavailable: boolean;
+  /** Set when the configured target could not be resolved to a usable sensor. */
+  problem?: EntityProblem;
 }
 
 interface HistoryPoint {
@@ -170,6 +180,18 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return places;
   }
 
+  /** A row that carries the reason a target could not be used instead of a reading. */
+  private _problemPlace(target: string, customName: string | undefined, problem: EntityProblem): SeaTemperatureData {
+    return {
+      name: customName || target,
+      temperature: '',
+      entity_id: target,
+      // Sorts with the unavailable places, at the end of the list.
+      unavailable: true,
+      problem,
+    };
+  }
+
   private _computePlacesData(hass: HomeAssistant, config: SeaTemperaturesCardConfig): SeaTemperatureData[] {
     const places: SeaTemperatureData[] = [];
     const allEntities = Object.values(hass.states);
@@ -178,11 +200,19 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       const target = typeof place === 'string' ? place : place.device;
       const customName = typeof place === 'object' ? place.name : undefined;
 
-      let tempEntity = hass.states[target];
+      let tempEntity: HassEntity | undefined;
       let deviceId: string | undefined;
 
-      if (tempEntity) {
-        // Target is an entity_id
+      if (target && target.includes('.')) {
+        // Target is an entity_id. A place has to be a numeric sensor: anything
+        // else used to be dropped without a word, or rendered as its raw state
+        // with a degree sign glued on ("on°C").
+        const resolved = resolveEntity(hass, target, { domain: 'sensor', numeric: true });
+        if (!resolved.ok && resolved.reason !== 'unavailable') {
+          places.push(this._problemPlace(target, customName, resolved.reason));
+          return;
+        }
+        tempEntity = hass.states[target];
         deviceId = hass.entities[target]?.device_id;
       } else {
         // Target is likely a device_id
@@ -191,7 +221,10 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
           (entity) => hass.entities[entity.entity_id]?.device_id === deviceId && entity.entity_id.startsWith('sensor.'),
         );
 
-        if (deviceEntities.length === 0) return;
+        if (deviceEntities.length === 0) {
+          places.push(this._problemPlace(target, customName, 'not_found'));
+          return;
+        }
 
         // Find the main temperature sensor:
         // 1. Prioritize entity with 'yesterday' attribute (main sensor)
@@ -206,6 +239,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       }
 
       if (tempEntity) {
+        // The sensor picked off a device gets the same treatment.
+        const resolved = resolveEntity(hass, tempEntity.entity_id, { domain: 'sensor', numeric: true });
+        if (!resolved.ok && resolved.reason !== 'unavailable') {
+          places.push(this._problemPlace(tempEntity.entity_id, customName, resolved.reason));
+          return;
+        }
+
         const attr = tempEntity.attributes;
         const isUnavailable = tempEntity.state === 'unavailable' || tempEntity.state === 'unknown';
         const device = deviceId ? hass.devices[deviceId] : undefined;
@@ -446,68 +486,82 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card .header=${this._config.title} tabindex="0" class="${isNarrow ? 'narrow' : ''}">
         <div class="card-content">
-          ${places.map(
-            (place) => html`
-              <div class="place-row">
-                <div
-                  class="place-header"
-                  role="button"
-                  tabindex="0"
-                  aria-label=${this._placeAriaLabel(place)}
-                  @click=${() => this._handleMoreInfo(place.entity_id)}
-                  @keydown=${(e: KeyboardEvent) => this._handleHeaderKeydown(e, place.entity_id)}
-                >
-                  <div class="place-info">
-                    <div class="place-name-container">
-                      <span class="place-name">${place.name}</span>
-                      ${place.country ? html`<span class="place-country">${place.country}</span>` : ''}
+          ${
+            places.length === 0
+              ? html`<div class="entity-warning" role="status">
+                  <ha-icon icon="mdi:water-off-outline"></ha-icon>
+                  <span>${localize(this.hass, 'common.errors.no_places')}</span>
+                </div>`
+              : ''
+          }
+          ${places.map((place) =>
+            place.problem
+              ? html`<div class="place-row">${renderEntityWarning(this.hass, place.problem, place.entity_id)}</div>`
+              : html`
+                  <div class="place-row">
+                    <div
+                      class="place-header"
+                      role="button"
+                      tabindex="0"
+                      aria-label=${this._placeAriaLabel(place)}
+                      @click=${() => this._handleMoreInfo(place.entity_id)}
+                      @keydown=${(e: KeyboardEvent) => this._handleHeaderKeydown(e, place.entity_id)}
+                    >
+                      <div class="place-info">
+                        <div class="place-name-container">
+                          <span class="place-name">${place.name}</span>
+                          ${place.country ? html`<span class="place-country">${place.country}</span>` : ''}
+                        </div>
+                        ${
+                          this._config.show_last_updated
+                            ? html`<div class="last-updated">
+                                ${
+                                  this.hass.states[place.entity_id]
+                                    ? formatShortDateTime(
+                                        new Date(this.hass.states[place.entity_id].last_updated),
+                                        this.hass,
+                                      )
+                                    : ''
+                                }
+                              </div>`
+                            : ''
+                        }
+                      </div>
+                      <div class="current-temp">
+                        ${
+                          place.unavailable
+                            ? html`<span class="temp-value unavailable" title=${place.temperature}>&mdash;</span>`
+                            : html`<span class="temp-value"
+                                  >${
+                                    isNumeric(place.temperature)
+                                      ? formatNumber(Number(place.temperature), this.hass)
+                                      : place.temperature
+                                  }</span
+                                >
+                                ${
+                                  // A unit belongs to a reading, not to a word: appending
+                                  // one to a text state produced "warm°C".
+                                  isNumeric(place.temperature) ? html`<span class="temp-unit">${place.unit}</span>` : ''
+                                }
+                                ${this._renderTrend(place.yesterday, place.temperature, place.unit)}`
+                        }
+                      </div>
                     </div>
+
                     ${
-                      this._config.show_last_updated
-                        ? html`<div class="last-updated">
-                            ${
-                              this.hass.states[place.entity_id]
-                                ? formatShortDateTime(
-                                    new Date(this.hass.states[place.entity_id].last_updated),
-                                    this.hass,
-                                  )
-                                : ''
-                            }
-                          </div>`
+                      this._config.show_stats !== false
+                        ? html`
+                            <div class="stats-grid">
+                              ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
+                              ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
+                              ${this._renderStat(localize(this.hass, 'card.average_avg'), place.average_avg, place.unit)}
+                            </div>
+                          `
                         : ''
                     }
+                    ${this._config.show_chart !== false ? this._renderChart(place) : ''}
                   </div>
-                  <div class="current-temp">
-                    ${
-                      place.unavailable
-                        ? html`<span class="temp-value unavailable" title=${place.temperature}>&mdash;</span>`
-                        : html`<span class="temp-value"
-                              >${
-                                !isNaN(Number(place.temperature))
-                                  ? formatNumber(Number(place.temperature), this.hass)
-                                  : place.temperature
-                              }</span
-                            >
-                            <span class="temp-unit">${place.unit}</span>
-                            ${this._renderTrend(place.yesterday, place.temperature, place.unit)}`
-                    }
-                  </div>
-                </div>
-
-                ${
-                  this._config.show_stats !== false
-                    ? html`
-                        <div class="stats-grid">
-                          ${this._renderStat(localize(this.hass, 'card.yesterday'), place.yesterday, place.unit)}
-                          ${this._renderStat(localize(this.hass, 'card.last_week'), place.last_week, place.unit)}
-                          ${this._renderStat(localize(this.hass, 'card.average_avg'), place.average_avg, place.unit)}
-                        </div>
-                      `
-                    : ''
-                }
-                ${this._config.show_chart !== false ? this._renderChart(place) : ''}
-              </div>
-            `,
+                `,
           )}
         </div>
       </ha-card>
@@ -517,12 +571,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
   private _renderStat(label: string, value?: string, unit?: string): TemplateResult {
     if (!value || value === 'unknown' || value === 'unavailable') return html``;
     const numVal = Number(value);
-    const formattedVal = !isNaN(numVal) ? formatNumber(numVal, this.hass) : value;
+    const isNumericValue = !isNaN(numVal);
+    const formattedVal = isNumericValue ? formatNumber(numVal, this.hass) : value;
 
     return html`
       <div class="stat-item">
         <span class="stat-label">${label}</span>
-        <span class="stat-value">${formattedVal}${unit}</span>
+        <span class="stat-value">${formattedVal}${isNumericValue ? unit : ''}</span>
       </div>
     `;
   }

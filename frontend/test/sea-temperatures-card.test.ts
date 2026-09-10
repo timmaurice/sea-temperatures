@@ -711,4 +711,71 @@ describe('SeaTemperaturesCard', () => {
       card.remove();
     });
   });
+  describe('Unresolvable places', () => {
+    const hassWith = (states: Record<string, unknown>): HomeAssistant =>
+      ({
+        states,
+        entities: {},
+        devices: {},
+        language: 'en',
+        localize: (key: string) => key,
+      }) as unknown as HomeAssistant;
+
+    const renderCard = async (places: unknown[], states: Record<string, unknown>) => {
+      const card = new SeaTemperaturesCard();
+      card.setConfig({ type: 'custom:sea-temperatures-card', places } as unknown as SeaTemperaturesCardConfig);
+      card.hass = hassWith(states);
+      document.body.appendChild(card);
+      await card.updateComplete;
+      return card;
+    };
+
+    it('says an entity is missing instead of dropping the row', async () => {
+      const card = await renderCard(['sensor.gone'], {});
+
+      const warning = card.shadowRoot?.querySelector('.entity-warning');
+      expect(warning?.textContent).toContain('sensor.gone');
+      expect(card.shadowRoot?.querySelectorAll('.place-header').length).toBe(0);
+
+      card.remove();
+    });
+
+    it('says an entity is from the wrong domain', async () => {
+      const card = await renderCard(['light.kitchen'], {
+        'light.kitchen': { entity_id: 'light.kitchen', state: 'on', attributes: {} },
+      });
+
+      expect(card.shadowRoot?.querySelector('.entity-warning')?.textContent).toContain('light.kitchen');
+      expect(card.shadowRoot?.querySelector('.temp-unit')).toBeNull();
+
+      card.remove();
+    });
+
+    it('never glues a unit onto a text state', async () => {
+      const card = await renderCard(['sensor.text'], {
+        'sensor.text': { entity_id: 'sensor.text', state: 'warm', attributes: { unit_of_measurement: '°C' } },
+      });
+
+      expect(card.shadowRoot?.textContent).not.toContain('warm°C');
+      expect(card.shadowRoot?.querySelector('.entity-warning')).not.toBeNull();
+
+      card.remove();
+    });
+
+    it('keeps showing a dash for a place that is only unavailable', async () => {
+      const card = await renderCard(['sensor.offline'], {
+        'sensor.offline': {
+          entity_id: 'sensor.offline',
+          state: 'unavailable',
+          last_updated: '2026-03-15T12:00:00.000Z',
+          attributes: { unit_of_measurement: '°C', friendly_name: 'Offline Beach' },
+        },
+      });
+
+      expect(card.shadowRoot?.querySelector('.temp-value.unavailable')).not.toBeNull();
+      expect(card.shadowRoot?.querySelector('.entity-warning')).toBeNull();
+
+      card.remove();
+    });
+  });
 });

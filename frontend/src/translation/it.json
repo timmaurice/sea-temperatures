@@ -33,7 +33,13 @@
     "min": "Min",
     "max": "Max",
     "avg": "Med",
-    "chart_description": "Andamento a 30 giorni"
+    "chart_description": "Andamento a 30 giorni",
+    "entity_problem": {
+      "not_found": "L'entità {entity} non è stata trovata.",
+      "wrong_domain": "{entity} non è un sensore.",
+      "not_numeric": "{entity} non fornisce una temperatura.",
+      "unavailable": "{entity} non è disponibile."
+    }
   },
   "common": {
     "errors": {

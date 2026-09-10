@@ -33,7 +33,13 @@
     "min": "Min",
     "max": "Max",
     "avg": "Avg",
-    "chart_description": "30-day trend"
+    "chart_description": "30-day trend",
+    "entity_problem": {
+      "not_found": "Entity {entity} was not found.",
+      "wrong_domain": "{entity} is not a sensor.",
+      "not_numeric": "{entity} does not report a temperature.",
+      "unavailable": "{entity} is unavailable."
+    }
   },
   "common": {
     "errors": {

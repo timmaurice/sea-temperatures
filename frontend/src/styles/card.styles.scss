@@ -208,6 +208,23 @@ $max-color: #ff9800;
   text-align: center;
 }
 
+// A place that could not be resolved says so here instead of leaving a blank row.
+.entity-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  color: var(--warning-color, #ffa600);
+  font-size: 0.9rem;
+  text-align: center;
+
+  ha-icon {
+    flex: 0 0 auto;
+    --mdc-icon-size: 20px;
+  }
+}
+
 .ref-label {
   font-size: 8px;
   font-weight: 500;
