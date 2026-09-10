@@ -9,7 +9,7 @@
 
 This custom integration for Home Assistant fetches sea temperatures directly from [seatemperatures.net](https://seatemperatures.net). **It comes fully bundled with a beautiful custom Lovelace card!**
 
-<img src="https://raw.githubusercontent.com/timmaurice/lovelace-sea-temperatures-card/main/image.png" alt="Card Screenshot" width="500px" />
+<img src="https://raw.githubusercontent.com/timmaurice/sea-temperatures/main/frontend/image.png" alt="Card Screenshot" width="500px" />
 
 > Today's sea temperature, the 10-year average, and a 30-day trend for 19,259 coastal locations, lakes, and rivers around the world.
 
@@ -18,7 +18,7 @@ This custom integration for Home Assistant fetches sea temperatures directly fro
 - **Global Coverage**: Select coastal locations from around the world.
 - **Detailed Attributes**: Provides today's temperature alongside current site data such as yesterday, 10-year averages, and a 30-day chart. A `last_week` value is exposed only when it can be derived from the published 30-day series.
 - **Device per Place**: Creates a dedicated device in Home Assistant for each monitored location.
-- **Bundled Custom Card**: Displays current temperatures, 24h trend indicators (↑/↓/→), and a 30-day D3 historical area chart.
+- **Bundled Custom Card**: Displays current temperatures, a trend indicator (↑/↓/→) against the site's own published `yesterday` value, and a 30-day D3 historical area chart.
 - **Touch Friendly**: The chart is scrubbable by touch and pen as well as by mouse, without blocking page scrolling.
 - **Accessible**: Place rows are focusable and keyboard-operable, and both the row and the chart expose screen-reader summaries.
 - **Graceful When Offline**: An unavailable or unknown place shows a dash instead of a bogus reading and sorts last.
@@ -29,6 +29,8 @@ This custom integration for Home Assistant fetches sea temperatures directly fro
 ### HACS (Recommended)
 
 This integration is available in the [Home Assistant Community Store (HACS)](https://hacs.xyz/). _Note: Because the frontend card is bundled, you do not need to install a separate frontend repository!_
+
+**Requires Home Assistant 2026.6.0 or newer** (declared in `hacs.json`); HACS hides the repository on older cores.
 
 <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=sea-temperatures&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 
@@ -53,7 +55,23 @@ Configuration is done entirely through the Home Assistant UI.
     3. **Step 3: Select Place**: Choose the specific location/beach.
 3.  Click **Submit**.
 
-### 2. Adding the Dashboard Card
+### 2. Changing the Update Interval
+
+The integration polls every **2 hours** by default - the site publishes one
+reading a day, so there is little to gain from polling harder. To change it, go
+to **Settings** -> **Devices & Services** -> **Sea Temperatures** -> **Configure**
+and set the interval (1-24 hours). The entry reloads itself; nothing is deleted,
+so the recorded history is kept.
+
+Repointing an existing entry at a _different_ place is deliberately not offered:
+one entity holding two locations' readings would corrupt its long-term
+statistics. Add a second entry instead.
+
+If something goes wrong, the integration's overflow menu offers
+**Download diagnostics** - it reports the entry, the coordinator state and a
+summary of the 30-day series.
+
+### 3. Adding the Dashboard Card
 
 Once your sensor is set up, you can add the custom card to your Lovelace dashboard:
 
@@ -72,7 +90,7 @@ yourself:
 lovelace:
   mode: yaml
   resources:
-    - url: /seatemperatures_frontend/sea-temperatures-card.js?v=3.2.1
+    - url: /seatemperatures_frontend/sea-temperatures-card.js?v=3.3.0
       type: module
 ```
 
@@ -93,7 +111,7 @@ mode the query string is yours to bump.
 | `places`            | list    | **Required** | A list of places to display. Can be entity IDs, device IDs, or objects with `device` and `name` (`name` is YAML only). |
 | `sort_by`           | string  | `default`    | Sort places by `default`, `name`, `temp_asc`, or `temp_desc`.                                                          |
 | `show_last_updated` | boolean | `true`       | Show the last updated timestamp.                                                                                       |
-| `show_trend`        | boolean | `true`       | Show 24h trend indicators.                                                                                             |
+| `show_trend`        | boolean | `true`       | Show the trend indicator (today vs. the sensor's `yesterday` attribute, not a 24h history query).                      |
 | `show_stats`        | boolean | `true`       | Show statistics (Yesterday, Last Week, 10-Year Avg).                                                                   |
 | `show_chart`        | boolean | `true`       | Show historical 30-day D3 chart.                                                                                       |
 | `show_country`      | boolean | `false`      | Append the country to the place name (e.g., Bondi Beach (Australia)).                                                  |
