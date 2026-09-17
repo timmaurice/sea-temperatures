@@ -861,48 +861,29 @@ describe('SeaTemperaturesCard', () => {
       return card;
     };
 
-    /** What Home Assistant's section grid gives a card asking for `rows`. */
-    const pixelsFor = (rows: number) => rows * 56 + (rows - 1) * 8;
-
-    it('does not reserve chart rows for a place that has no chart', () => {
+    it('lets Home Assistant measure the height', () => {
+      // The row count used to be `_contentHeight()` rounded up: a careful
+      // estimate, but a second model of the card kept in step with the real one
+      // by hand, and every part whose height changed had to be re-measured
+      // here. Whatever the place carries, the grid now measures the card.
       const withChart = sizedCard({
         unit_of_measurement: '°C',
         yesterday: 21,
         charts: chartFor('sensor.beach'),
       });
-      const withoutChart = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+      const withoutChart = sizedCard({ unit_of_measurement: '°C' });
 
-      const bare = withoutChart.getGridOptions().rows;
-      const full = withChart.getGridOptions().rows;
-
-      // The chart is 136px of the card; reserving it when nothing draws left a
-      // gap of more than 160px under the content.
-      expect(full).toBeGreaterThan(bare);
-      expect(pixelsFor(bare)).toBeLessThan(pixelsFor(full) - 100);
+      expect(withChart.getGridOptions().rows).toBe('auto');
+      expect(withoutChart.getGridOptions().rows).toBe('auto');
     });
 
-    it('does not reserve a stats row for a place with no statistics', () => {
-      const withStats = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
-      const withoutStats = sizedCard({ unit_of_measurement: '°C' });
-
-      expect(withoutStats.getGridOptions().rows).toBeLessThan(withStats.getGridOptions().rows);
-    });
-
-    it('reserves room for a title', () => {
-      const untitled = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
-      const titled = sizedCard({ unit_of_measurement: '°C', yesterday: 21 }, { title: 'Beaches' });
-
-      expect(titled.getGridOptions().rows).toBeGreaterThan(untitled.getGridOptions().rows);
-    });
-
-    it('covers the whole card without leaving a big gap', () => {
-      // A header (62px) and stats (57px) inside 32px of padding: 151px, which is
-      // three grid rows. Five - what the old count returned - was 161px too many.
+    it('asks for the full width and keeps a floor under the height', () => {
       const card = sizedCard({ unit_of_measurement: '°C', yesterday: 21 });
+      const options = card.getGridOptions();
 
-      const rows = card.getGridOptions().rows;
-      expect(pixelsFor(rows)).toBeGreaterThanOrEqual(151);
-      expect(pixelsFor(rows) - 151).toBeLessThan(56);
+      expect(options.columns).toBe('full');
+      expect(options.min_columns).toBe(6);
+      expect(options.min_rows).toBe(2);
     });
 
     it('keeps getCardSize in step with the same content', () => {
@@ -917,11 +898,11 @@ describe('SeaTemperaturesCard', () => {
       expect(bare.getCardSize()).toBeGreaterThan(0);
     });
 
-    it('never asks for fewer rows than the card can be drawn in', () => {
+    it('still answers for a card with no places at all', () => {
       const card = new SeaTemperaturesCard();
       card.setConfig({ type: 'custom:sea-temperatures-card', places: [] } as unknown as SeaTemperaturesCardConfig);
 
-      expect(card.getGridOptions().rows).toBeGreaterThanOrEqual(2);
+      expect(card.getGridOptions().rows).toBe('auto');
       expect(card.getCardSize()).toBeGreaterThan(0);
     });
   });

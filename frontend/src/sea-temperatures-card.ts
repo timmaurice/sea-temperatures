@@ -7,6 +7,7 @@ import {
   LovelaceCardEditor,
   PlaceConfig,
   SeaTemperaturesCardConfig,
+  LovelaceGridOptions,
 } from './types.js';
 import { localize } from './localize.js';
 import { fireEvent } from './utils.js';
@@ -20,10 +21,6 @@ import styles from './styles/card.styles.scss';
 const ELEMENT_NAME = 'sea-temperatures-card';
 const EDITOR_ELEMENT_NAME = `${ELEMENT_NAME}-editor`;
 
-// Home Assistant's section grid stacks 56px rows with an 8px gap, so N rows are
-// worth 64N - 8 pixels on screen.
-const GRID_ROW_GAP = 8;
-const GRID_ROW_PITCH = 56 + GRID_ROW_GAP;
 const MIN_GRID_ROWS = 2;
 
 // Heights of the card's parts, measured against a rendered card. They only have
@@ -171,13 +168,19 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     return Math.max(1, Math.ceil(this._contentHeight() / 50));
   }
 
-  public getGridOptions(): Record<string, number> {
-    return {
-      rows: Math.max(MIN_GRID_ROWS, Math.ceil((this._contentHeight() + GRID_ROW_GAP) / GRID_ROW_PITCH)),
-      columns: 12,
-      min_rows: MIN_GRID_ROWS,
-      min_columns: 6,
-    };
+  /**
+   * Sizing for sections dashboards.
+   *
+   * `rows: 'auto'` rather than `_contentHeight()` rounded up to whole rows.
+   * That estimate was careful - it stopped counting parts the card was not
+   * going to draw - but it was still a second model of the card kept in step
+   * with the first by hand, and every part whose height changed had to be
+   * measured again here. Home Assistant measures the rendered card instead,
+   * which cannot drift and costs nothing to maintain. `_contentHeight()` stays
+   * for `getCardSize()`, which masonry needs and which has no auto.
+   */
+  public getGridOptions(): LovelaceGridOptions {
+    return { columns: 'full', min_columns: 6, rows: 'auto', min_rows: MIN_GRID_ROWS };
   }
 
   /**
