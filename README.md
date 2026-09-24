@@ -90,7 +90,7 @@ yourself:
 lovelace:
   mode: yaml
   resources:
-    - url: /seatemperatures_frontend/sea-temperatures-card.js?v=3.3.0
+    - url: /seatemperatures_frontend/sea-temperatures-card.js?v=3.3.1
       type: module
 ```
 
