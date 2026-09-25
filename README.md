@@ -138,6 +138,8 @@ For each configured place, the following sensor will be created:
 | :-------------- | :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------ |
 | **Temperature** | The current sea temperature today. | `yesterday`, `last_week` (when derivable from the 30-day chart), `date`, `average_min`, `average_max`, `average_avg`, `charts`, `continent`, `country`, `area`, `place`, `path` | `21.5`        |
 
+The sensor is named after its device class in your Home Assistant language, so it shows up as "Island of Sylt Temperature" in English and "Island of Sylt Temperatur" in German. Its icon is Home Assistant's default for temperature sensors. The entity ID (`sensor.seatemperatures_<place>_today`) is the same in every language, and a rename or custom icon you set in the UI still takes precedence.
+
 `last_year` has been replaced by the `average_avg` (10-year average) attribute to align with the current SeaTemperatures.net layout.
 
 The `charts` attribute holds the 30-day series as `charts.last_thirty` with `labels` and `series`. Labels are full ISO calendar dates (`YYYY-MM-DD`); earlier releases emitted `MM-DD`, which the card still accepts when reading a restored state.
