@@ -141,7 +141,7 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pt=(t=dt
       </defs>
       <text class="axis-label start" x="${l}" y="${115}">${v(b)}</text>
       <text class="axis-label end" x="${r-o}" y="${115}" text-anchor="end">${v(x)}</text>
-      
+
       <path class="chart-area" d="${_(e)||""}" fill="url(#gradient-${t.replace(/\./g,"-")})"></path>
       <path
         class="chart-line"
@@ -150,17 +150,17 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pt=(t=dt
         stroke="var(--primary-color, #0077be)"
         stroke-width="2"
       ></path>
-      
+
       ${y(n.average_min,"min",yt(this.hass,"card.min"))}
       ${y(n.average_max,"max",yt(this.hass,"card.max"))}
       ${y(n.average_avg,"avg",yt(this.hass,"card.avg"))}
-      
+
       ${M?Z`<circle class="extrema-dot min" cx="${u(M.date)}" cy="${f(M.value)}" r="3"></circle>`:""}
       ${A?Z`<circle class="extrema-dot max" cx="${u(A.date)}" cy="${f(A.value)}" r="3"></circle>`:""}
 
       ${w}
       ${T}
-      
+
       <rect
         class="hover-overlay"
         x="${l}"

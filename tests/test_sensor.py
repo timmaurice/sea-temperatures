@@ -14,7 +14,11 @@ from custom_components.seatemperatures.const import (
     CONF_PATH,
     CONF_PLACE,
 )
-from custom_components.seatemperatures.sensor import SENSORS, SeaTemperatureSensor
+from custom_components.seatemperatures.sensor import (
+    SENSORS,
+    SeaTemperatureSensor,
+    async_setup_entry,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -60,6 +64,21 @@ def _sensor(entry: SimpleNamespace, data: dict | None = None) -> SeaTemperatureS
     return SeaTemperatureSensor(coordinator, entry, SENSORS[0])
 
 
+async def test_platform_setup_reads_the_coordinator_from_the_entry() -> None:
+    """The coordinator is handed over on entry.runtime_data, not hass.data."""
+    entry = _entry()
+    entry.runtime_data = MagicMock()
+    hass = MagicMock()
+    hass.data = {}
+    async_add_entities = MagicMock()
+
+    await async_setup_entry(hass, entry, async_add_entities)
+
+    (sensors,) = async_add_entities.call_args.args
+    assert len(sensors) == len(SENSORS)
+    assert all(sensor.coordinator is entry.runtime_data for sensor in sensors)
+
+
 async def test_unique_id_is_slugified() -> None:
     """A path-based key must not leak slashes into the registry id."""
     sensor = _sensor(_entry())
@@ -78,7 +97,7 @@ async def test_the_sensor_and_the_migration_agree_on_the_id() -> None:
 
 
 async def test_two_paths_that_slugify_alike_get_different_sensors() -> None:
-    """"/" and "-" both slugify to "_", so these two real Greek beaches used to
+    """ "/" and "-" both slugify to "_", so these two real Greek beaches used to
     claim one id - and the second sensor was rejected at setup."""
     folded = _sensor(_entry(path="/europe/greece/nea-plagia/", place="Nea Plagia"))
     nested = _sensor(_entry(path="/europe/greece/nea/plagia/", place="Plagia"))
@@ -103,7 +122,9 @@ async def test_native_value_does_not_log_the_payload(
     """native_value runs on every state write - it must not print the chart."""
     sensor = _sensor(_entry(), _payload())
 
-    with caplog.at_level(logging.DEBUG, logger="custom_components.seatemperatures.sensor"):
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.seatemperatures.sensor"
+    ):
         assert sensor.native_value == pytest.approx(11.83)
         assert sensor.native_value == pytest.approx(11.83)
 
@@ -116,7 +137,9 @@ async def test_native_value_is_none_without_data_and_stays_quiet(
     """A missing payload is the coordinator's business to report, not ours."""
     sensor = _sensor(_entry(), None)
 
-    with caplog.at_level(logging.DEBUG, logger="custom_components.seatemperatures.sensor"):
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.seatemperatures.sensor"
+    ):
         assert sensor.native_value is None
 
     assert caplog.text == ""
