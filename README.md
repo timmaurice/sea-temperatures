@@ -30,7 +30,7 @@ This custom integration for Home Assistant fetches sea temperatures directly fro
 
 This integration is available in the [Home Assistant Community Store (HACS)](https://hacs.xyz/). _Note: Because the frontend card is bundled, you do not need to install a separate frontend repository!_
 
-**Requires Home Assistant 2026.6.0 or newer** (declared in `hacs.json`); HACS hides the repository on older cores.
+**Requires Home Assistant 2026.9.3 or newer** (declared in `hacs.json`); HACS hides the repository on older cores.
 
 <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=sea-temperatures&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 
