@@ -6,7 +6,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from . import SeaTemperatureConfigEntry
+from .coordinator import SeaTemperatureConfigEntry
 
 
 async def async_get_config_entry_diagnostics(

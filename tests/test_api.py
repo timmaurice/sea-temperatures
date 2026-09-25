@@ -10,7 +10,7 @@ import pytest
 from homeassistant.helpers.selector import SelectSelector
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.seatemperatures import _async_fetch, async_migrate_entry
+from custom_components.seatemperatures import async_migrate_entry
 from custom_components.seatemperatures.api import (
     MAP_LOCATIONS_TTL,
     REQUEST_TIMEOUT,
@@ -30,6 +30,7 @@ from custom_components.seatemperatures.const import (
     CONF_PLACE,
     CONF_PLACE_ID,
 )
+from custom_components.seatemperatures.coordinator import SeaTemperatureCoordinator
 from custom_components.seatemperatures.parser import (
     parse_location_page,
     validate_location_path,
@@ -520,13 +521,24 @@ async def test_get_temperatures_rejects_an_invalid_path(mock_hass) -> None:
 
 async def test_fetch_turns_an_api_error_into_update_failed() -> None:
     """The coordinator has to see one UpdateFailed carrying the reason."""
-    api = MagicMock()
-    api.get_temperatures = AsyncMock(
-        side_effect=SeaTemperatureError("upstream is down")
+    entry = SimpleNamespace(
+        data={CONF_PATH: "/europe/denmark/copenhagen/", CONF_PLACE: "Copenhagen"},
+        options={},
+        async_on_unload=MagicMock(),
     )
 
+    with patch(
+        "custom_components.seatemperatures.coordinator.SeaTemperatureAPI"
+    ) as api:
+        api.return_value.get_temperatures = AsyncMock(
+            side_effect=SeaTemperatureError("upstream is down")
+        )
+        coordinator = SeaTemperatureCoordinator(
+            MagicMock(), entry, "/europe/denmark/copenhagen/"
+        )
+
     with pytest.raises(UpdateFailed, match="upstream is down"):
-        await _async_fetch(api, "/europe/denmark/copenhagen/", "Copenhagen")
+        await coordinator._async_update_data()
 
 
 async def test_every_request_carries_an_explicit_timeout(mock_hass) -> None:
