@@ -48,9 +48,11 @@ class SeaTemperatureSensorEntityDescription(SensorEntityDescription):
 SENSORS: tuple[SeaTemperatureSensorEntityDescription, ...] = (
     SeaTemperatureSensorEntityDescription(
         key="today",
-        name="Temperature",
+        # No name and no icon: with has_entity_name, HA names an unnamed sensor
+        # after its device class ("Temperature", "Temperatur", ...) in the
+        # user's language, and the temperature device class brings the
+        # mdi:thermometer default icon with it.
         data_key="today",
-        icon="mdi:thermometer",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -90,9 +92,6 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
         self._place_name = entry.data.get(CONF_PLACE, "Unknown")
         # Shared with the unique_id migration, so both sides agree on the id.
         self._location_key = entry_location_key(entry)
-
-        # Set friendly name
-        self._attr_name = "Temperature"
 
         place_prefix = slugify(self._place_name)
 
