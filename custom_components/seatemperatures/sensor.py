@@ -13,14 +13,12 @@ from homeassistant.components.sensor import (
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
-from . import SeaTemperatureConfigEntry, build_unique_id, entry_location_key
+from . import build_unique_id, entry_location_key
 from .const import BASE_URL, CONF_AREA, CONF_PATH, CONF_PLACE, DOMAIN
+from .coordinator import SeaTemperatureConfigEntry, SeaTemperatureCoordinator
 from .parser import validate_location_path
 
 _LOGGER = logging.getLogger(__name__)
@@ -82,7 +80,7 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator,
+        coordinator: SeaTemperatureCoordinator,
         entry: SeaTemperatureConfigEntry,
         description: SeaTemperatureSensorEntityDescription,
     ):

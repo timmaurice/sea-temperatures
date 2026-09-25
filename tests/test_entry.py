@@ -10,7 +10,6 @@ from homeassistant import config_entries
 from custom_components.seatemperatures import (
     _async_migrate_unique_ids,
     async_migrate_entry,
-    async_scan_interval,
     async_setup_entry,
     async_unload_entry,
     build_unique_id,
@@ -32,6 +31,10 @@ from custom_components.seatemperatures.const import (
     DOMAIN,
     MAX_SCAN_INTERVAL_HOURS,
     MIN_SCAN_INTERVAL_HOURS,
+)
+from custom_components.seatemperatures.coordinator import (
+    SeaTemperatureCoordinator,
+    async_scan_interval,
 )
 from custom_components.seatemperatures.diagnostics import (
     async_get_config_entry_diagnostics,
@@ -97,26 +100,47 @@ async def test_scan_interval_falls_back_on_a_bad_option(stored) -> None:
     assert async_scan_interval(entry) == timedelta(hours=DEFAULT_SCAN_INTERVAL_HOURS)
 
 
-async def test_setup_entry_polls_at_the_configured_interval() -> None:
-    """The option is worthless unless the coordinator is built with it."""
+async def _setup_with_the_real_coordinator(entry: SimpleNamespace) -> MagicMock:
+    """Run async_setup_entry with the real coordinator class but no network:
+    the API is patched and the first refresh does nothing."""
     hass = MagicMock()
     hass.data = {}
     hass.config_entries.async_forward_entry_setups = AsyncMock()
-    entry = _entry(options={CONF_SCAN_INTERVAL_HOURS: 6})
 
     with (
-        patch("custom_components.seatemperatures.SeaTemperatureAPI"),
-        patch("custom_components.seatemperatures.DataUpdateCoordinator") as coordinator,
+        patch("custom_components.seatemperatures.coordinator.SeaTemperatureAPI"),
+        patch.object(
+            SeaTemperatureCoordinator,
+            "async_config_entry_first_refresh",
+            AsyncMock(),
+        ),
     ):
-        coordinator.return_value.async_config_entry_first_refresh = AsyncMock()
-
         assert await async_setup_entry(hass, entry) is True
 
-    assert coordinator.call_args.kwargs["update_interval"] == timedelta(hours=6)
-    assert entry.runtime_data is coordinator.return_value
+    return hass
+
+
+async def test_setup_entry_polls_at_the_configured_interval() -> None:
+    """The option is worthless unless the coordinator is built with it."""
+    entry = _entry(options={CONF_SCAN_INTERVAL_HOURS: 6})
+
+    hass = await _setup_with_the_real_coordinator(entry)
+
+    assert entry.runtime_data.update_interval == timedelta(hours=6)
     # Per-entry state lives on the entry; hass.data[DOMAIN] is only for the
     # cache the entries share.
     assert DOMAIN not in hass.data
+
+
+async def test_setup_entry_stores_the_coordinator_on_the_entry() -> None:
+    """runtime_data holds the integration's own coordinator, bound to its entry."""
+    entry = _entry()
+
+    await _setup_with_the_real_coordinator(entry)
+
+    assert isinstance(entry.runtime_data, SeaTemperatureCoordinator)
+    assert entry.runtime_data.config_entry is entry
+    assert entry.runtime_data.name == f"{DOMAIN}_{SYLT_PATH}"
 
 
 @pytest.mark.parametrize("unloaded", [True, False])
@@ -152,8 +176,9 @@ async def test_saving_the_options_reloads_the_entry() -> None:
     entry = _entry()
 
     with (
-        patch("custom_components.seatemperatures.SeaTemperatureAPI"),
-        patch("custom_components.seatemperatures.DataUpdateCoordinator") as coordinator,
+        patch(
+            "custom_components.seatemperatures.SeaTemperatureCoordinator"
+        ) as coordinator,
     ):
         coordinator.return_value.async_config_entry_first_refresh = AsyncMock()
 

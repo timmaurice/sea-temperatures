@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
-from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import slugify
 
-from .api import SeaTemperatureAPI, SeaTemperatureError
+from .api import SeaTemperatureAPI
 from .const import (
     CONF_AREA,
     CONF_CONTINENT,
@@ -19,20 +16,12 @@ from .const import (
     CONF_PATH,
     CONF_PLACE,
     CONF_PLACE_ID,
-    CONF_SCAN_INTERVAL_HOURS,
-    DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
-    MAX_SCAN_INTERVAL_HOURS,
-    MIN_SCAN_INTERVAL_HOURS,
 )
+from .coordinator import SeaTemperatureConfigEntry, SeaTemperatureCoordinator
 
 PLATFORMS = [Platform.SENSOR]
 _LOGGER = logging.getLogger(__name__)
-
-# The coordinator is the only per-entry state, so it lives on the entry itself.
-# hass.data[DOMAIN] keeps what is shared across entries: the map-locations
-# cache in api.py, which the config flow reads before any entry exists.
-type SeaTemperatureConfigEntry = ConfigEntry[DataUpdateCoordinator[dict[str, Any]]]
 
 CARD_FILENAME = "sea-temperatures-card.js"
 CARD_URL_PREFIX = "/seatemperatures_frontend/"
@@ -131,21 +120,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
 
     return True
-
-
-def async_scan_interval(entry: ConfigEntry) -> timedelta:
-    """Return the poll interval for an entry, honouring the options flow."""
-    hours = entry.options.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS)
-    try:
-        hours = int(hours)
-    except (TypeError, ValueError):
-        hours = DEFAULT_SCAN_INTERVAL_HOURS
-    if not MIN_SCAN_INTERVAL_HOURS <= hours <= MAX_SCAN_INTERVAL_HOURS:
-        # The options flow bounds the form, but a hand-edited or older stored
-        # value reaches this reader directly - clamp both ends, not just the
-        # one that would hammer the site.
-        hours = DEFAULT_SCAN_INTERVAL_HOURS
-    return timedelta(hours=hours)
 
 
 def entry_location_key(entry: ConfigEntry) -> str:
@@ -303,30 +277,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def _async_fetch(
-    api: SeaTemperatureAPI, location_path: str | None, place_name: str
-) -> dict:
-    """Fetch one refresh, turning an API failure into a single logged one.
-
-    The coordinator logs an UpdateFailed once and stays quiet while the failure
-    persists, so the API layer deliberately reports nothing of its own.
-    """
-    if not location_path:
-        raise UpdateFailed(
-            "No location path configured. Remove and re-add the integration."
-        )
-
-    try:
-        data = await api.get_temperatures(location_path)
-    except SeaTemperatureError as err:
-        raise UpdateFailed(str(err)) from err
-
-    if not data:
-        raise UpdateFailed(f"Failed to fetch data for place {place_name}")
-
-    return data
-
-
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload the entry after the options flow saved a new poll interval.
 
@@ -348,24 +298,7 @@ async def async_setup_entry(
     # subscription with the entry rather than stacking one per reload.
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
-    place_name = entry.data.get(CONF_PLACE, "Unknown")
-    location_path = entry.data.get(CONF_PATH)
-    location_key = entry_location_key(entry)
-
-    api = SeaTemperatureAPI(hass)
-
-    async def async_update_data():
-        """Fetch data from API."""
-        return await _async_fetch(api, location_path, place_name)
-
-    coordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name=f"seatemperatures_{location_key}",
-        update_method=async_update_data,
-        update_interval=async_scan_interval(entry),
-    )
-
+    coordinator = SeaTemperatureCoordinator(hass, entry, entry_location_key(entry))
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
