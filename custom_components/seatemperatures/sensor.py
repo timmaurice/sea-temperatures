@@ -26,6 +26,10 @@ from .parser import validate_location_path
 
 _LOGGER = logging.getLogger(__name__)
 
+# The coordinator does the one fetch per location; the sensor only reads its
+# data and has no update method or action of its own, so nothing to serialise.
+PARALLEL_UPDATES = 0
+
 
 def _to_float(val: Any, round_to: int | None = None) -> float | str:
     """Safely convert a value to float if possible."""
