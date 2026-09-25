@@ -10,7 +10,6 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -20,7 +19,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import slugify
 
-from . import build_unique_id, entry_location_key
+from . import SeaTemperatureConfigEntry, build_unique_id, entry_location_key
 from .const import BASE_URL, CONF_AREA, CONF_PATH, CONF_PLACE, DOMAIN
 from .parser import validate_location_path
 
@@ -63,11 +62,11 @@ SENSORS: tuple[SeaTemperatureSensorEntityDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: SeaTemperatureConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Sea Temperature sensor entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
 
     sensors = [
         SeaTemperatureSensor(coordinator, entry, description) for description in SENSORS
@@ -84,7 +83,7 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
-        entry: ConfigEntry,
+        entry: SeaTemperatureConfigEntry,
         description: SeaTemperatureSensorEntityDescription,
     ):
         super().__init__(coordinator)

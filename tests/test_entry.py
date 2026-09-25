@@ -12,8 +12,10 @@ from custom_components.seatemperatures import (
     async_migrate_entry,
     async_scan_interval,
     async_setup_entry,
+    async_unload_entry,
     build_unique_id,
 )
+from custom_components.seatemperatures.api import _MAP_LOCATIONS_CACHE
 from custom_components.seatemperatures.config_flow import (
     SeaTemperatureConfigFlow,
     SeaTemperatureOptionsFlow,
@@ -115,7 +117,27 @@ async def test_setup_entry_polls_at_the_configured_interval() -> None:
         assert await async_setup_entry(hass, entry) is True
 
     assert coordinator.call_args.kwargs["update_interval"] == timedelta(hours=6)
-    assert hass.data[DOMAIN][entry.entry_id] is coordinator.return_value
+    assert entry.runtime_data is coordinator.return_value
+    # Per-entry state lives on the entry; hass.data[DOMAIN] is only for the
+    # cache the entries share.
+    assert DOMAIN not in hass.data
+
+
+@pytest.mark.parametrize("unloaded", [True, False])
+async def test_unload_entry_reports_the_platform_unload(unloaded) -> None:
+    """Core drops runtime_data after a successful unload, so the result of
+    the platform unload is all this has to pass on - and the shared
+    map-locations cache must survive one entry going away."""
+    hass = MagicMock()
+    shared = {_MAP_LOCATIONS_CACHE: (0.0, {})}
+    hass.data = {DOMAIN: shared}
+    hass.config_entries.async_unload_platforms = AsyncMock(return_value=unloaded)
+    entry = _entry(runtime_data=MagicMock())
+
+    assert await async_unload_entry(hass, entry) is unloaded
+
+    hass.config_entries.async_unload_platforms.assert_awaited_once()
+    assert hass.data == {DOMAIN: shared}
 
 
 async def test_saving_the_options_reloads_the_entry() -> None:
@@ -418,8 +440,8 @@ async def test_diagnostics_report_the_entry_and_summarise_the_chart() -> None:
             },
         },
     )
+    entry.runtime_data = coordinator
     hass = MagicMock()
-    hass.data = {DOMAIN: {entry.entry_id: coordinator}}
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 
@@ -441,10 +463,11 @@ async def test_diagnostics_report_the_entry_and_summarise_the_chart() -> None:
 
 
 async def test_diagnostics_survive_a_never_refreshed_entry() -> None:
-    """Diagnostics are the tool you reach for when setup failed."""
+    """Diagnostics are the tool you reach for when setup failed - and then
+    the entry never got a runtime_data at all."""
     entry = _entry()
+    assert not hasattr(entry, "runtime_data")
     hass = MagicMock()
-    hass.data = {}
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 

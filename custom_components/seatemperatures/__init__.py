@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -27,6 +28,11 @@ from .const import (
 
 PLATFORMS = [Platform.SENSOR]
 _LOGGER = logging.getLogger(__name__)
+
+# The coordinator is the only per-entry state, so it lives on the entry itself.
+# hass.data[DOMAIN] keeps what is shared across entries: the map-locations
+# cache in api.py, which the config flow reads before any entry exists.
+type SeaTemperatureConfigEntry = ConfigEntry[DataUpdateCoordinator[dict[str, Any]]]
 
 CARD_FILENAME = "sea-temperatures-card.js"
 CARD_URL_PREFIX = "/seatemperatures_frontend/"
@@ -327,10 +333,10 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(
+    hass: HomeAssistant, entry: SeaTemperatureConfigEntry
+) -> bool:
     """Set up Sea Temperature from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
-
     # Registered before the first refresh so an options save during a slow or
     # failing setup is not silently dropped; async_on_unload drops the
     # subscription with the entry rather than stacking one per reload.
@@ -356,16 +362,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: SeaTemperatureConfigEntry
+) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unload_ok
+    # Core drops entry.runtime_data once the unload succeeded, so there is no
+    # hass.data bookkeeping left to undo here.
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

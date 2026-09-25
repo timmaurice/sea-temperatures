@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from . import SeaTemperatureConfigEntry
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant, entry: SeaTemperatureConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry.
 
@@ -24,7 +23,10 @@ async def async_get_config_entry_diagnostics(
     is meant to be readable, and the series is 30 numbers per place that say
     nothing a first and last point does not.
     """
-    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    # getattr rather than entry.runtime_data: the attribute only exists once
+    # the first refresh succeeded, and a failed setup is exactly when someone
+    # downloads diagnostics.
+    coordinator = getattr(entry, "runtime_data", None)
     data = getattr(coordinator, "data", None)
 
     return {

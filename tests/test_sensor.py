@@ -14,7 +14,11 @@ from custom_components.seatemperatures.const import (
     CONF_PATH,
     CONF_PLACE,
 )
-from custom_components.seatemperatures.sensor import SENSORS, SeaTemperatureSensor
+from custom_components.seatemperatures.sensor import (
+    SENSORS,
+    SeaTemperatureSensor,
+    async_setup_entry,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -58,6 +62,21 @@ def _sensor(entry: SimpleNamespace, data: dict | None = None) -> SeaTemperatureS
     coordinator = MagicMock()
     coordinator.data = data
     return SeaTemperatureSensor(coordinator, entry, SENSORS[0])
+
+
+async def test_platform_setup_reads_the_coordinator_from_the_entry() -> None:
+    """The coordinator is handed over on entry.runtime_data, not hass.data."""
+    entry = _entry()
+    entry.runtime_data = MagicMock()
+    hass = MagicMock()
+    hass.data = {}
+    async_add_entities = MagicMock()
+
+    await async_setup_entry(hass, entry, async_add_entities)
+
+    (sensors,) = async_add_entities.call_args.args
+    assert len(sensors) == len(SENSORS)
+    assert all(sensor.coordinator is entry.runtime_data for sensor in sensors)
 
 
 async def test_unique_id_is_slugified() -> None:
