@@ -9,6 +9,7 @@ package-lock.json
 
 # Exclude python and dist dirs
 custom_components
+tests
 test_config
 
 # Virtual Environments
