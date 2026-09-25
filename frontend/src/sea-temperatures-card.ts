@@ -892,7 +892,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
       </defs>
       <text class="axis-label start" x="${margin.left}" y="${height - 5}">${formatDate(startDate)}</text>
       <text class="axis-label end" x="${width - margin.right}" y="${height - 5}" text-anchor="end">${formatDate(endDate)}</text>
-      
+
       <path class="chart-area" d="${areaGen(data) || ''}" fill="url(#gradient-${entityId.replace(/\./g, '-')})"></path>
       <path
         class="chart-line"
@@ -901,17 +901,17 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         stroke="var(--primary-color, #0077be)"
         stroke-width="2"
       ></path>
-      
+
       ${renderRefLine(place.average_min, 'min', localize(this.hass, 'card.min'))}
       ${renderRefLine(place.average_max, 'max', localize(this.hass, 'card.max'))}
       ${renderRefLine(place.average_avg, 'avg', localize(this.hass, 'card.avg'))}
-      
+
       ${minPoint ? svg`<circle class="extrema-dot min" cx="${x(minPoint.date)}" cy="${y(minPoint.value)}" r="3"></circle>` : ''}
       ${maxPoint ? svg`<circle class="extrema-dot max" cx="${x(maxPoint.date)}" cy="${y(maxPoint.value)}" r="3"></circle>` : ''}
 
       ${nowDot}
       ${hoverElements}
-      
+
       <rect
         class="hover-overlay"
         x="${margin.left}"

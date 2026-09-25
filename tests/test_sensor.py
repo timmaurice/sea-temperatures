@@ -97,7 +97,7 @@ async def test_the_sensor_and_the_migration_agree_on_the_id() -> None:
 
 
 async def test_two_paths_that_slugify_alike_get_different_sensors() -> None:
-    """"/" and "-" both slugify to "_", so these two real Greek beaches used to
+    """ "/" and "-" both slugify to "_", so these two real Greek beaches used to
     claim one id - and the second sensor was rejected at setup."""
     folded = _sensor(_entry(path="/europe/greece/nea-plagia/", place="Nea Plagia"))
     nested = _sensor(_entry(path="/europe/greece/nea/plagia/", place="Plagia"))
@@ -122,7 +122,9 @@ async def test_native_value_does_not_log_the_payload(
     """native_value runs on every state write - it must not print the chart."""
     sensor = _sensor(_entry(), _payload())
 
-    with caplog.at_level(logging.DEBUG, logger="custom_components.seatemperatures.sensor"):
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.seatemperatures.sensor"
+    ):
         assert sensor.native_value == pytest.approx(11.83)
         assert sensor.native_value == pytest.approx(11.83)
 
@@ -135,7 +137,9 @@ async def test_native_value_is_none_without_data_and_stays_quiet(
     """A missing payload is the coordinator's business to report, not ours."""
     sensor = _sensor(_entry(), None)
 
-    with caplog.at_level(logging.DEBUG, logger="custom_components.seatemperatures.sensor"):
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.seatemperatures.sensor"
+    ):
         assert sensor.native_value is None
 
     assert caplog.text == ""

@@ -51,6 +51,7 @@ def _searchable(options: list[str]) -> SelectSelector:
         )
     )
 
+
 # The first path segment of every location, as published by
 # /api/map-locations.json. Slugs missing here fall back to a title-cased name,
 # so a stale entry is worse than none: it produces a second spelling of a
@@ -264,9 +265,7 @@ class SeaTemperatureOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(
                 data={
-                    CONF_SCAN_INTERVAL_HOURS: int(
-                        user_input[CONF_SCAN_INTERVAL_HOURS]
-                    )
+                    CONF_SCAN_INTERVAL_HOURS: int(user_input[CONF_SCAN_INTERVAL_HOURS])
                 }
             )
 
@@ -276,9 +275,7 @@ class SeaTemperatureOptionsFlow(config_entries.OptionsFlow):
 
         data_schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_SCAN_INTERVAL_HOURS, default=current
-                ): NumberSelector(
+                vol.Required(CONF_SCAN_INTERVAL_HOURS, default=current): NumberSelector(
                     NumberSelectorConfig(
                         min=MIN_SCAN_INTERVAL_HOURS,
                         max=MAX_SCAN_INTERVAL_HOURS,

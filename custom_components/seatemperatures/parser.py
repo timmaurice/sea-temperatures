@@ -13,7 +13,7 @@ from urllib.parse import unquote, urlsplit
 _LOGGER = logging.getLogger(__name__)
 
 _CHART_PAYLOAD_RE = re.compile(
-    r'<script[^>]*data-sea-curve-payload[^>]*>(.*?)</script>',
+    r"<script[^>]*data-sea-curve-payload[^>]*>(.*?)</script>",
     flags=re.IGNORECASE | re.DOTALL,
 )
 _DATE_RE = re.compile(r">\s*([A-Za-z]+ \d{1,2}(?:st|nd|rd|th) [A-Za-z]+, \d{4})\s*<")
@@ -133,8 +133,7 @@ def parse_location_page(html: str) -> SeaTemperatureData:
 
 def _extract_summary_value(html: str, label: str) -> float | None:
     pattern = (
-        rf">\s*{re.escape(label)}\s*</p>\s*<p[^>]*>\s*"
-        r'<span[^>]+data-c="([^"]+)"'
+        rf">\s*{re.escape(label)}\s*</p>\s*<p[^>]*>\s*" r'<span[^>]+data-c="([^"]+)"'
     )
     return _extract_float(html, pattern)
 
@@ -164,7 +163,9 @@ def _parse_page_date(html: str) -> str | None:
         return None
 
 
-def _parse_trend_chart(html: str) -> tuple[list[str] | None, list[float] | None, float | None]:
+def _parse_trend_chart(
+    html: str,
+) -> tuple[list[str] | None, list[float] | None, float | None]:
     match = _CHART_PAYLOAD_RE.search(html)
     if match is None:
         return None, None, None

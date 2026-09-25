@@ -97,7 +97,9 @@ async def test_parse_location_page_tolerates_missing_values() -> None:
     assert data.trend_temps_c is None
 
 
-async def test_parse_location_page_tolerates_malformed_chart_json(caplog: pytest.LogCaptureFixture) -> None:
+async def test_parse_location_page_tolerates_malformed_chart_json(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Malformed chart JSON should be ignored with a warning."""
     html = """
     <html><body>
@@ -168,7 +170,9 @@ async def test_get_temperatures_from_location_page(mock_hass) -> None:
         mock_response = AsyncMock()
         mock_response.text.return_value = html
         mock_response.raise_for_status = MagicMock()
-        mock_session.return_value.get.return_value.__aenter__.return_value = mock_response
+        mock_session.return_value.get.return_value.__aenter__.return_value = (
+            mock_response
+        )
 
         result = await api.get_temperatures("/europe/denmark/copenhagen/")
 
@@ -185,7 +189,15 @@ async def test_get_location_by_place_id_uses_map_locations(mock_hass) -> None:
     """Legacy IDs should resolve through map-locations data."""
     api = SeaTemperatureAPI(mock_hass)
     payload = {
-        "locations": [["canonical-36", "Boumerdas", "Algeria", "Boumerdes", "/africa/algeria/boumerdas/"]]
+        "locations": [
+            [
+                "canonical-36",
+                "Boumerdas",
+                "Algeria",
+                "Boumerdes",
+                "/africa/algeria/boumerdas/",
+            ]
+        ]
     }
 
     with patch(
@@ -194,7 +206,9 @@ async def test_get_location_by_place_id_uses_map_locations(mock_hass) -> None:
         mock_response = AsyncMock()
         mock_response.json.return_value = payload
         mock_response.raise_for_status = MagicMock()
-        mock_session.return_value.get.return_value.__aenter__.return_value = mock_response
+        mock_session.return_value.get.return_value.__aenter__.return_value = (
+            mock_response
+        )
 
         result = await api.get_location_by_place_id("canonical-36")
 
@@ -210,7 +224,9 @@ async def test_get_location_by_place_id_falls_back_to_sea_prefix(mock_hass) -> N
     """Numeric legacy IDs should resolve by prefixing sea-."""
     api = SeaTemperatureAPI(mock_hass)
     payload = {
-        "locations": [["sea-5484", "Acharavi", "Greece", "Corfu", "/europe/greece/acharavi/"]]
+        "locations": [
+            ["sea-5484", "Acharavi", "Greece", "Corfu", "/europe/greece/acharavi/"]
+        ]
     }
 
     with patch(
@@ -219,7 +235,9 @@ async def test_get_location_by_place_id_falls_back_to_sea_prefix(mock_hass) -> N
         mock_response = AsyncMock()
         mock_response.json.return_value = payload
         mock_response.raise_for_status = MagicMock()
-        mock_session.return_value.get.return_value.__aenter__.return_value = mock_response
+        mock_session.return_value.get.return_value.__aenter__.return_value = (
+            mock_response
+        )
 
         result = await api.get_location_by_place_id("5484")
 
@@ -245,7 +263,9 @@ async def test_config_flow_stores_path_based_location(mock_hass) -> None:
         }
     }
 
-    with patch.object(SeaTemperatureAPI, "get_map_locations", AsyncMock(return_value=locations_cache)):
+    with patch.object(
+        SeaTemperatureAPI, "get_map_locations", AsyncMock(return_value=locations_cache)
+    ):
         user_result = await flow.async_step_user(None)
         assert user_result["type"] == "form"
         assert user_result["step_id"] == "user"
@@ -316,23 +336,33 @@ async def test_async_migrate_entry_from_place_id(mock_hass) -> None:
     }
 
 
-async def test_async_migrate_entry_fails_when_place_id_cannot_be_mapped(mock_hass) -> None:
+async def test_async_migrate_entry_fails_when_place_id_cannot_be_mapped(
+    mock_hass,
+) -> None:
     """Migration should fail cleanly if a legacy ID no longer resolves."""
-    entry = SimpleNamespace(version=1, entry_id="entry-2", data={CONF_PLACE_ID: "missing"})
+    entry = SimpleNamespace(
+        version=1, entry_id="entry-2", data={CONF_PLACE_ID: "missing"}
+    )
 
-    with patch.object(SeaTemperatureAPI, "get_location_by_place_id", AsyncMock(return_value=None)):
+    with patch.object(
+        SeaTemperatureAPI, "get_location_by_place_id", AsyncMock(return_value=None)
+    ):
         migrated = await async_migrate_entry(mock_hass, entry)
 
     assert migrated is False
     mock_hass.config_entries.async_update_entry.assert_not_called()
 
 
-async def test_config_flow_reshows_the_form_when_the_site_is_unreachable(mock_hass) -> None:
+async def test_config_flow_reshows_the_form_when_the_site_is_unreachable(
+    mock_hass,
+) -> None:
     """An unreachable site must show a translated error, not an abort."""
     flow = SeaTemperatureConfigFlow()
     flow.hass = mock_hass
 
-    with patch.object(SeaTemperatureAPI, "get_map_locations", AsyncMock(return_value=None)):
+    with patch.object(
+        SeaTemperatureAPI, "get_map_locations", AsyncMock(return_value=None)
+    ):
         result = await flow.async_step_user(None)
 
     assert result["type"] == "form"
@@ -411,7 +441,9 @@ async def test_unknown_continent_slug_keeps_joining_words_small() -> None:
     """A slug the site adds later still has to read as a name."""
     flow = SeaTemperatureConfigFlow()
 
-    assert flow._get_continent_name("islands-of-the-atlantic") == "Islands of the Atlantic"
+    assert (
+        flow._get_continent_name("islands-of-the-atlantic") == "Islands of the Atlantic"
+    )
 
 
 def _selector_for(schema, key: str) -> SelectSelector:
@@ -467,11 +499,15 @@ async def test_get_temperatures_does_not_log_its_own_error(
     ) as mock_session:
         mock_session.return_value.get.side_effect = aiohttp.ClientError("boom")
 
-        with caplog.at_level(logging.DEBUG), pytest.raises(SeaTemperatureError) as excinfo:
+        with caplog.at_level(logging.DEBUG), pytest.raises(
+            SeaTemperatureError
+        ) as excinfo:
             await api.get_temperatures("/europe/denmark/copenhagen/")
 
     assert "boom" in str(excinfo.value)
-    assert [record for record in caplog.records if record.levelno >= logging.ERROR] == []
+    assert [
+        record for record in caplog.records if record.levelno >= logging.ERROR
+    ] == []
 
 
 async def test_get_temperatures_rejects_an_invalid_path(mock_hass) -> None:
@@ -485,7 +521,9 @@ async def test_get_temperatures_rejects_an_invalid_path(mock_hass) -> None:
 async def test_fetch_turns_an_api_error_into_update_failed() -> None:
     """The coordinator has to see one UpdateFailed carrying the reason."""
     api = MagicMock()
-    api.get_temperatures = AsyncMock(side_effect=SeaTemperatureError("upstream is down"))
+    api.get_temperatures = AsyncMock(
+        side_effect=SeaTemperatureError("upstream is down")
+    )
 
     with pytest.raises(UpdateFailed, match="upstream is down"):
         await _async_fetch(api, "/europe/denmark/copenhagen/", "Copenhagen")
@@ -520,7 +558,9 @@ async def test_map_locations_are_cached_within_the_ttl(mock_hass) -> None:
     """Repeated lookups inside the TTL must not refetch 19k rows."""
     api = SeaTemperatureAPI(mock_hass)
     payload = {
-        "locations": [["sea-1", "Acharavi", "Greece", "Corfu", "/europe/greece/acharavi/"]]
+        "locations": [
+            ["sea-1", "Acharavi", "Greece", "Corfu", "/europe/greece/acharavi/"]
+        ]
     }
 
     with patch(
@@ -529,7 +569,9 @@ async def test_map_locations_are_cached_within_the_ttl(mock_hass) -> None:
         mock_response = AsyncMock()
         mock_response.json.return_value = payload
         mock_response.raise_for_status = MagicMock()
-        mock_session.return_value.get.return_value.__aenter__.return_value = mock_response
+        mock_session.return_value.get.return_value.__aenter__.return_value = (
+            mock_response
+        )
 
         first = await api.get_map_locations()
         second = await api.get_map_locations()
@@ -544,7 +586,9 @@ async def test_map_locations_are_refetched_once_the_ttl_expires(mock_hass) -> No
     """A beach added upstream must appear without restarting Home Assistant."""
     api = SeaTemperatureAPI(mock_hass)
     first_payload = {
-        "locations": [["sea-1", "Acharavi", "Greece", "Corfu", "/europe/greece/acharavi/"]]
+        "locations": [
+            ["sea-1", "Acharavi", "Greece", "Corfu", "/europe/greece/acharavi/"]
+        ]
     }
     second_payload = {
         "locations": [
@@ -559,7 +603,9 @@ async def test_map_locations_are_refetched_once_the_ttl_expires(mock_hass) -> No
         mock_response = AsyncMock()
         mock_response.json.side_effect = [first_payload, second_payload]
         mock_response.raise_for_status = MagicMock()
-        mock_session.return_value.get.return_value.__aenter__.return_value = mock_response
+        mock_session.return_value.get.return_value.__aenter__.return_value = (
+            mock_response
+        )
 
         with patch(
             "custom_components.seatemperatures.api.time.monotonic", return_value=0.0

@@ -249,11 +249,17 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate legacy config entries from place IDs to path-based locations."""
     if entry.version > 4:
-        _LOGGER.error("Unsupported SeaTemperatures config entry version: %s", entry.version)
+        _LOGGER.error(
+            "Unsupported SeaTemperatures config entry version: %s", entry.version
+        )
         return False
 
     if entry.version < 2:
-        _LOGGER.debug("Migrating SeaTemperatures entry %s from version %s", entry.entry_id, entry.version)
+        _LOGGER.debug(
+            "Migrating SeaTemperatures entry %s from version %s",
+            entry.entry_id,
+            entry.version,
+        )
 
         data = dict(entry.data)
         location_path = data.get(CONF_PATH)

@@ -76,9 +76,7 @@ def _entry(**kwargs) -> SimpleNamespace:
 
 async def test_scan_interval_defaults_to_two_hours() -> None:
     """An entry that never saw the options flow keeps the shipped interval."""
-    assert async_scan_interval(_entry()) == timedelta(
-        hours=DEFAULT_SCAN_INTERVAL_HOURS
-    )
+    assert async_scan_interval(_entry()) == timedelta(hours=DEFAULT_SCAN_INTERVAL_HOURS)
 
 
 async def test_scan_interval_follows_the_saved_option() -> None:
@@ -96,9 +94,7 @@ async def test_scan_interval_falls_back_on_a_bad_option(stored) -> None:
     options flow advertises - neither a zero nor a week-long one."""
     entry = _entry(options={CONF_SCAN_INTERVAL_HOURS: stored})
 
-    assert async_scan_interval(entry) == timedelta(
-        hours=DEFAULT_SCAN_INTERVAL_HOURS
-    )
+    assert async_scan_interval(entry) == timedelta(hours=DEFAULT_SCAN_INTERVAL_HOURS)
 
 
 async def test_setup_entry_polls_at_the_configured_interval() -> None:
@@ -220,9 +216,7 @@ async def test_options_flow_stores_the_interval_as_an_int() -> None:
     result = await flow.async_step_init({CONF_SCAN_INTERVAL_HOURS: 8.0})
 
     assert result["data"] == {CONF_SCAN_INTERVAL_HOURS: 8}
-    assert async_scan_interval(
-        _entry(options=result["data"])
-    ) == timedelta(hours=8)
+    assert async_scan_interval(_entry(options=result["data"])) == timedelta(hours=8)
 
 
 # --- unique_id migration -------------------------------------------------
