@@ -15,16 +15,15 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.1.0
-    hooks:
-      - id: prettier
-        additional_dependencies:
-          - prettier@3.9.9
-        exclude: ^(custom_components/|test_config/)
-
   - repo: local
     hooks:
+      # mirrors-prettier is archived; the repo's own prettier from package.json runs instead.
+      - id: prettier
+        name: prettier
+        entry: npx prettier --write --ignore-unknown
+        language: system
+        types: [text]
+        exclude: ^(custom_components/|test_config/)
       - id: eslint
         name: eslint
         entry: npm run lint
