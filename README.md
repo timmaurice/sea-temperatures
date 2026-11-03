@@ -1,6 +1,6 @@
 # Sea Temperatures Integration for Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
+[![Marketplace / HACS](https://img.shields.io/badge/Marketplace%20%2F%20HACS-Default-41BDF5.svg?style=flat-square)](https://hacs.xyz/docs/marketplace/)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/sea-temperatures?style=flat-square)
 [![GH-downloads](https://img.shields.io/github/downloads/timmaurice/sea-temperatures/total?style=flat-square)](https://github.com/timmaurice/sea-temperatures/releases)
 [![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/sea-temperatures.svg?style=flat-square)](https://github.com/timmaurice/sea-temperatures/commits/master)
@@ -26,13 +26,15 @@ This custom integration for Home Assistant fetches sea temperatures directly fro
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace or HACS (Recommended)
 
-This integration is available in the [Home Assistant Community Store (HACS)](https://hacs.xyz/). _Note: Because the frontend card is bundled, you do not need to install a separate frontend repository!_
+This integration is in the default catalog. From Home Assistant 2026.11, find it under **Settings** → **Marketplace**; on earlier versions, in the [Home Assistant Community Store (HACS)](https://hacs.xyz/). The button opens it in whichever of the two your Home Assistant has: _Note: Because the frontend card is bundled, you do not need to install a separate frontend repository!_
 
-**Requires Home Assistant 2026.9.3 or newer** (declared in `hacs.json`); HACS hides the repository on older cores.
+**Requires Home Assistant 2026.9.3 or newer** (declared in `hacs.json`). On an older core HACS lists the integration but refuses to install it.
 
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=sea-temperatures&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=sea-temperatures&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open this repository in the Marketplace or HACS of your Home Assistant instance." /></a>
+
+After installing from HACS, restart Home Assistant. The Marketplace sets up a new integration without a restart.
 
 <details>
 <summary>Manual Installation</summary>
