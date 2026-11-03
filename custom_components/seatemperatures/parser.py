@@ -157,7 +157,7 @@ def _parse_page_date(html: str) -> str | None:
 
     page_date = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", match.group(1))
     try:
-        return datetime.strptime(page_date, "%A %d %B, %Y").date().isoformat()  # noqa: DTZ007 - date-only value, timezone is irrelevant
+        return datetime.strptime(page_date, "%A %d %B, %Y").date().isoformat()
     except ValueError:
         _LOGGER.debug("Failed to parse page date from %s", page_date)
         return None
