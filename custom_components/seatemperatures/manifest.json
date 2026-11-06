@@ -1,6 +1,9 @@
 {
   "domain": "seatemperatures",
   "name": "Sea Temperatures",
+  "categories": [
+    "weather_alerts"
+  ],
   "codeowners": [
     "@timmaurice"
   ],
