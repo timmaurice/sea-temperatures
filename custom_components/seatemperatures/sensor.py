@@ -79,6 +79,9 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sea Temperature Sensor."""
 
     _attr_has_entity_name = True
+    # The 30-point chart series is the same on every poll; the card reads it from
+    # the live state, so one copy per state write would only bloat the recorder.
+    _unrecorded_attributes = frozenset({"charts"})
 
     def __init__(
         self,
