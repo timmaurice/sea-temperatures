@@ -541,6 +541,27 @@ async def test_fetch_turns_an_api_error_into_update_failed() -> None:
         await coordinator._async_update_data()
 
 
+@pytest.mark.parametrize("payload", [{}, {"sst": {}}, {"sst": {"yesterday": 17.0}}])
+async def test_fetch_without_a_current_reading_is_update_failed(payload) -> None:
+    """A page that parsed to nothing must fail the refresh, not leave unknown."""
+    entry = SimpleNamespace(
+        data={CONF_PATH: "/europe/denmark/copenhagen/", CONF_PLACE: "Copenhagen"},
+        options={},
+        async_on_unload=MagicMock(),
+    )
+
+    with patch(
+        "custom_components.seatemperatures.coordinator.SeaTemperatureAPI"
+    ) as api:
+        api.return_value.get_temperatures = AsyncMock(return_value=payload)
+        coordinator = SeaTemperatureCoordinator(
+            MagicMock(), entry, "/europe/denmark/copenhagen/"
+        )
+
+    with pytest.raises(UpdateFailed, match="Copenhagen"):
+        await coordinator._async_update_data()
+
+
 async def test_every_request_carries_an_explicit_timeout(mock_hass) -> None:
     """A host that accepts the connection but never answers must not hang a refresh."""
     api = SeaTemperatureAPI(mock_hass)
