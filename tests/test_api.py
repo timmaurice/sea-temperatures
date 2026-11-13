@@ -21,11 +21,13 @@ from custom_components.seatemperatures.api import (
 from custom_components.seatemperatures.config_flow import (
     CONTINENT_NAMES,
     SeaTemperatureConfigFlow,
+    build_display_name,
 )
 from custom_components.seatemperatures.const import (
     CONF_AREA,
     CONF_CONTINENT,
     CONF_COUNTRY,
+    CONF_DISPLAY_NAME,
     CONF_PATH,
     CONF_PLACE,
     CONF_PLACE_ID,
@@ -292,8 +294,10 @@ async def test_config_flow_stores_path_based_location(mock_hass) -> None:
         CONF_COUNTRY: "United States",
         CONF_AREA: "Florida, United States",
         CONF_PLACE: "Miami Beach",
+        CONF_DISPLAY_NAME: "Miami Beach (Florida, United States)",
         CONF_PATH: "/north-america/united-states/miami-beach/",
     }
+    assert place_result["title"] == "Miami Beach (Florida, United States) Sea Temperature"
 
 
 async def test_async_migrate_entry_from_place_id(mock_hass) -> None:
@@ -655,3 +659,16 @@ async def test_map_locations_are_refetched_once_the_ttl_expires(mock_hass) -> No
 
     assert "sea-2" not in first
     assert "sea-2" in second
+
+
+@pytest.mark.parametrize(
+    ("area", "country", "expected"),
+    [
+        ("Florida, United States", "United States", "Atlantic Beach (Florida, United States)"),
+        ("Florida", "United States", "Atlantic Beach (Florida, United States)"),
+        ("", "United States", "Atlantic Beach (United States)"),
+        (None, None, "Atlantic Beach"),
+    ],
+)
+async def test_build_display_name(area, country, expected) -> None:
+    assert build_display_name("Atlantic Beach", area, country) == expected
