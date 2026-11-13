@@ -21,6 +21,7 @@ from .const import (
     CONF_AREA,
     CONF_CONTINENT,
     CONF_COUNTRY,
+    CONF_DISPLAY_NAME,
     CONF_PATH,
     CONF_PLACE,
     CONF_SCAN_INTERVAL_HOURS,
@@ -67,6 +68,18 @@ CONTINENT_NAMES = {
     "north-america": "North America",
     "south-america": "South America",
 }
+
+
+def build_display_name(name: str, area: str | None, country: str | None) -> str:
+    """Qualify a place name with area and country: "Name (Florida, United States)".
+
+    The area usually already ends in the country; it is only appended when missing.
+    """
+    parts = [part for part in (area, country) if part]
+    qualifier = ", ".join(parts)
+    if area and country and country in area:
+        qualifier = area
+    return f"{name} ({qualifier})" if qualifier else name
 
 
 class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -200,16 +213,20 @@ class SeaTemperatureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             selected_label = user_input[CONF_PLACE]
             location = self._places[selected_label]
+            display_name = build_display_name(
+                location["name"], location.get("area"), selected_country
+            )
             await self.async_set_unique_id(location["path"])
             self._abort_if_unique_id_configured()
 
             return self.async_create_entry(
-                title=f"{location['name']} Sea Temperature",
+                title=f"{display_name} Sea Temperature",
                 data={
                     CONF_CONTINENT: selected_continent,
                     CONF_COUNTRY: selected_country,
                     CONF_AREA: location.get("area", ""),
                     CONF_PLACE: location["name"],
+                    CONF_DISPLAY_NAME: display_name,
                     CONF_PATH: location["path"],
                 },
             )
