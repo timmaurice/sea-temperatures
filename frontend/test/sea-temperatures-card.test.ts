@@ -925,7 +925,7 @@ describe('SeaTemperaturesCard', () => {
       const options = card.getGridOptions();
 
       expect(options.columns).toBe('full');
-      expect(options.min_columns).toBe(6);
+      expect(options.min_columns).toBe(4);
       expect(options.min_rows).toBe(2);
     });
 

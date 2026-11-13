@@ -23,6 +23,10 @@ const EDITOR_ELEMENT_NAME = `${ELEMENT_NAME}-editor`;
 
 const MIN_GRID_ROWS = 2;
 
+// Narrowest chart the card draws. Below it the chart scales down instead of
+// forcing the card wider than its slot.
+const CHART_MIN_WIDTH = 100;
+
 // Heights of the card's parts, measured against a rendered card. They only have
 // to be close: the grid rounds up to whole rows anyway.
 const CARD_PADDING = 32; // .card-content, top and bottom
@@ -122,7 +126,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     this._resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         if (entry.contentRect.width > 0) {
-          const newWidth = Math.max(200, entry.contentRect.width - 32); // 32px is the card padding
+          const newWidth = Math.max(CHART_MIN_WIDTH, entry.contentRect.width - 32); // 32px is the card padding
           if (this._chartWidth !== newWidth) {
             this._chartWidth = newWidth;
           }
@@ -180,7 +184,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
    * for `getCardSize()`, which masonry needs and which has no auto.
    */
   public getGridOptions(): LovelaceGridOptions {
-    return { columns: 'full', min_columns: 6, rows: 'auto', min_rows: MIN_GRID_ROWS };
+    return { columns: 'full', min_columns: 4, rows: 'auto', min_rows: MIN_GRID_ROWS };
   }
 
   /**
