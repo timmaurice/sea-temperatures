@@ -273,6 +273,22 @@ describe('SeaTemperaturesCard', () => {
       cardDisabled.remove();
     });
 
+    it("rounds the reading to the entity's display_precision", async () => {
+      const card = await setupCard({});
+      const hass = {
+        ...card.hass,
+        states: {
+          'sensor.sea_temp_sensor': { ...card.hass.states['sensor.sea_temp_sensor'], state: '9.09' },
+        },
+        entities: { 'sensor.sea_temp_sensor': { device_id: 'device-1', display_precision: 1 } },
+        locale: { language: 'en', number_format: 'language' },
+      } as unknown as HomeAssistant;
+      card.hass = hass;
+      await card.updateComplete;
+      expect(card.shadowRoot?.querySelector('.temp-value')?.textContent?.trim()).toBe('9.1');
+      card.remove();
+    });
+
     it('renders trend icons strictly when show_trend is true or omitted', async () => {
       // For this to show we need history fetched (which sets _historyState)
       const cardEnabled = await setupCard({ show_trend: true });

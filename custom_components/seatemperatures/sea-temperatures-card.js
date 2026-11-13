@@ -71,7 +71,7 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pt=(t=dt
                       </div>
                       <div class="current-temp">
                         ${t.unavailable?W`<span class="temp-value unavailable" title=${t.temperature}>&mdash;</span>`:W`<span class="temp-value"
-                                  >${St(t.temperature)?wt(Number(t.temperature),this.hass):t.temperature}</span
+                                  >${St(t.temperature)?wt(Number(t.temperature),this.hass,this._precisionOptions(t.entity_id)):t.temperature}</span
                                 >
                                 ${St(t.temperature)?W`<span class="temp-unit">${t.unit}</span>`:""}
                                 ${this._renderTrend(t.yesterday,t.temperature,t.unit)}`}
@@ -90,7 +90,7 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pt=(t=dt
                 `;var e,n,r})}
         </div>
       </ha-card>
-    `}_renderStat(t,e,n){if(!e||"unknown"===e||"unavailable"===e)return W``;const r=Number(e),i=!isNaN(r),a=i?wt(r,this.hass):e;return W`
+    `}_precisionOptions(t){const e=this.hass.entities?.[t]?.display_precision;if(!("number"!=typeof e||e<0||e>20))return{minimumFractionDigits:e,maximumFractionDigits:e}}_renderStat(t,e,n){if(!e||"unknown"===e||"unavailable"===e)return W``;const r=Number(e),i=!isNaN(r),a=i?wt(r,this.hass):e;return W`
       <div class="stat-item">
         <span class="stat-label">${t}</span>
         <span class="stat-value">${a}${i?n:""}</span>
