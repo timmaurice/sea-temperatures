@@ -167,3 +167,11 @@ async def test_device_name_uses_display_name_only_when_stored() -> None:
         _sensor(qualified).device_info["name"]
         == "Island of Sylt (Schleswig-Holstein, Germany)"
     )
+
+
+async def test_chart_attribute_is_kept_out_of_the_recorder() -> None:
+    """The series repeats on every state write; only the live state needs it."""
+    sensor = _sensor(_entry(), _payload())
+
+    assert "charts" in sensor._Entity__combined_unrecorded_attributes
+    assert "charts" in sensor.extra_state_attributes
