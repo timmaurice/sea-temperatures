@@ -120,6 +120,11 @@ jobs:
           npm run check-format
           npm run lint
           npm run test
+          npm run build
+          if ! git diff --exit-code -- custom_components/seatemperatures/sea-temperatures-card.js; then
+            echo "::error::custom_components/seatemperatures/sea-temperatures-card.js is stale. Run npm run build and commit the result."
+            exit 1
+          fi
 
   test-lint:
     runs-on: ubuntu-latest
