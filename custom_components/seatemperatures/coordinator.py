@@ -91,7 +91,9 @@ class SeaTemperatureCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except SeaTemperatureError as err:
             raise UpdateFailed(str(err)) from err
 
-        if not data:
+        # The parser always returns {"sst": {}}, which is truthy, so an empty
+        # parse (page layout changed) has to be detected on the reading itself.
+        if not data or not data.get("sst", {}).get("today"):
             raise UpdateFailed(f"Failed to fetch data for place {self._place_name}")
 
         return data
