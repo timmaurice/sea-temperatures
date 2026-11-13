@@ -156,6 +156,19 @@ async def test_extra_state_attributes_still_carry_the_chart() -> None:
     assert attrs["path"] == SYLT_PATH
 
 
+async def test_device_name_uses_display_name_only_when_stored() -> None:
+    """Entries created before display_name existed keep the bare place name."""
+    legacy = _entry()
+    assert _sensor(legacy).device_info["name"] == "Island of Sylt"
+
+    qualified = _entry()
+    qualified.data["display_name"] = "Island of Sylt (Schleswig-Holstein, Germany)"
+    assert (
+        _sensor(qualified).device_info["name"]
+        == "Island of Sylt (Schleswig-Holstein, Germany)"
+    )
+
+
 async def test_chart_attribute_is_kept_out_of_the_recorder() -> None:
     """The series repeats on every state write; only the live state needs it."""
     sensor = _sensor(_entry(), _payload())
