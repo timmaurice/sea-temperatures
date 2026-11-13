@@ -3,8 +3,11 @@ import {
   BASE_URL,
   PASSWORD,
   USERNAME,
+  ensureConfigEntry,
   ensureRunning,
+  onboardIfNeeded,
   saveTokens,
+  waitForCardResource,
   waitForCoreRunning,
   waitForFrontend,
 } from './helpers/homeassistant';
@@ -18,6 +21,7 @@ import {
 export default async function globalSetup(): Promise<void> {
   ensureRunning();
   await waitForFrontend();
+  await onboardIfNeeded();
 
   const browser = await chromium.launch();
   const page = await browser.newPage();
@@ -45,6 +49,9 @@ export default async function globalSetup(): Promise<void> {
 
     // Tokens first: this needs the websocket API.
     await waitForCoreRunning();
+    // A fresh instance has no config entry, so nothing loads the integration.
+    await ensureConfigEntry();
+    await waitForCardResource();
   } finally {
     await browser.close();
   }
