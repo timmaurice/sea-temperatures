@@ -7,6 +7,9 @@ $max-color: #ff9800;
 
 :host ::slotted(.card-content),
 .card-content {
+  // Lets the rules at the end of the file react to the width the card was given
+  // rather than to the viewport.
+  container: sea-temperatures-card / inline-size;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -377,5 +380,45 @@ ha-card.narrow {
 
   .axis-label {
     font-size: 7px;
+  }
+}
+
+// A card squeezed into a narrow sections slot (min_columns 3 is roughly 150px).
+// Everything above ~220px keeps the layout it had; below it the name column and
+// the reading no longer fit side by side, so the header wraps (the reading goes
+// under the name instead of the name being squeezed into a column one letter
+// wide) and the stat tiles drop onto a second row instead of overflowing.
+@container sea-temperatures-card (max-width: 220px) {
+  .place-header {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .place-info {
+    flex: 1 1 8rem;
+  }
+
+  .place-name-container {
+    flex-wrap: wrap;
+    overflow-wrap: break-word;
+  }
+
+  // `auto-fill` keeps the tiles where they were wherever they still fit.
+  .stats-grid,
+  .averages-grid {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  }
+
+  .temp-value {
+    font-size: 1.6rem;
+  }
+}
+
+// At ~130px the reading, unit and trend arrow cannot stay on one line any more.
+@container sea-temperatures-card (max-width: 150px) {
+  .current-temp {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    white-space: normal;
   }
 }
