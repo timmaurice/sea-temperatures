@@ -165,6 +165,25 @@ This repository includes a standard Home Assistant Devcontainer.
 
 </details>
 
+<details>
+<summary>Running the end-to-end tests</summary>
+
+The Playwright suite drives a real Home Assistant from this repository's `docker-compose.yml`
+(port 8125). It works from a fresh clone and needs Docker, **Node 22 or newer** and outbound
+network access (the config flow reads the location list from seatemperatures.net):
+
+```bash
+npm ci
+npx playwright install chromium
+npm run build
+npm run test:e2e
+```
+
+Global setup starts the container, onboards the test user and adds a config entry when the
+instance has none. The same steps run in CI (job `e2e` in `.github/workflows/tests.yml`).
+
+</details>
+
 ## Contributions
 
 Contributions are welcome! If you find a bug or have a feature request, please open an issue on the GitHub repository.
