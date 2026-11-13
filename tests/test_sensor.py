@@ -154,3 +154,11 @@ async def test_extra_state_attributes_still_carry_the_chart() -> None:
     assert attrs["average_avg"] == pytest.approx(12.13)
     assert len(attrs["charts"]["last_thirty"]["series"]) == 30
     assert attrs["path"] == SYLT_PATH
+
+
+async def test_chart_attribute_is_kept_out_of_the_recorder() -> None:
+    """The series repeats on every state write; only the live state needs it."""
+    sensor = _sensor(_entry(), _payload())
+
+    assert "charts" in sensor._Entity__combined_unrecorded_attributes
+    assert "charts" in sensor.extra_state_attributes
