@@ -71,6 +71,11 @@ export function formatMonthDay(date: Date, hass?: HomeAssistant): string {
   return formatWith(date, hass, { month: 'short', day: 'numeric' });
 }
 
+/** A calendar day with its year, for a date that carries no clock time. */
+export function formatDate(date: Date, hass?: HomeAssistant): string {
+  return formatWith(date, hass, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 /** A day, month and clock time, for the "last updated" line. */
 export function formatShortDateTime(date: Date, hass?: HomeAssistant): string {
   const hour12 = useHour12(hass);

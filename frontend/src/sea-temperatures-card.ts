@@ -12,7 +12,7 @@ import {
 import { localize } from './localize.js';
 import { fireEvent } from './utils.js';
 import { EntityProblem, renderEntityWarning, resolveEntity } from './entity-resolution.js';
-import { formatMonthDay, formatNumber, formatShortDateTime, isNumeric } from './format.js';
+import { formatDate, formatMonthDay, formatNumber, formatShortDateTime, isNumeric } from './format.js';
 import { scaleTime, scaleLinear, type ScaleLinear, type ScaleTime } from 'd3-scale';
 import { line, area, curveMonotoneX, curveLinear, curveStepAfter } from 'd3-shape';
 import { extent, bisector } from 'd3-array';
@@ -603,16 +603,7 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                         </div>
                         ${
                           this._config.show_last_updated
-                            ? html`<div class="last-updated">
-                                ${
-                                  this.hass.states[place.entity_id]
-                                    ? formatShortDateTime(
-                                        new Date(this.hass.states[place.entity_id].last_updated),
-                                        this.hass,
-                                      )
-                                    : ''
-                                }
-                              </div>`
+                            ? html`<div class="last-updated">${this._lastUpdatedText(place)}</div>`
                             : ''
                         }
                       </div>
@@ -655,6 +646,20 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
         </div>
       </ha-card>
     `;
+  }
+
+  /**
+   * The measurement date the site reported, falling back to the state's write time.
+   * `last_updated` is reset by every restart, so it says nothing about the reading.
+   */
+  private _lastUpdatedText(place: SeaTemperatureData): string {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(place.date ?? '');
+    if (match) {
+      // Built from parts so a bare ISO date is not shifted by the time zone.
+      return formatDate(new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])), this.hass);
+    }
+    const state = this.hass.states[place.entity_id];
+    return state ? formatShortDateTime(new Date(state.last_updated), this.hass) : '';
   }
 
   private _renderStat(label: string, value?: string, unit?: string): TemplateResult {

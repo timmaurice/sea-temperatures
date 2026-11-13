@@ -273,6 +273,33 @@ describe('SeaTemperaturesCard', () => {
       cardDisabled.remove();
     });
 
+    it('shows the measurement date instead of the state write time', async () => {
+      const card = await setupCard({});
+      const base = card.hass.states['sensor.sea_temp_sensor'];
+      card.hass = {
+        ...card.hass,
+        language: 'en',
+        states: {
+          'sensor.sea_temp_sensor': {
+            ...base,
+            last_updated: '2026-11-13T08:00:00.000Z',
+            attributes: { ...base.attributes, date: '2026-03-14' },
+          },
+        },
+      } as unknown as HomeAssistant;
+      await card.updateComplete;
+      expect(card.shadowRoot?.querySelector('.last-updated')?.textContent?.trim()).toBe('Mar 14, 2026');
+      card.remove();
+    });
+
+    it('falls back to last_updated when the entity has no date attribute', async () => {
+      const card = await setupCard({});
+      const text = card.shadowRoot?.querySelector('.last-updated')?.textContent?.trim();
+      expect(text).toContain('Mar');
+      expect(text).toMatch(/\d{2}:\d{2}|AM|PM/);
+      card.remove();
+    });
+
     it('renders trend icons strictly when show_trend is true or omitted', async () => {
       // For this to show we need history fetched (which sets _historyState)
       const cardEnabled = await setupCard({ show_trend: true });
