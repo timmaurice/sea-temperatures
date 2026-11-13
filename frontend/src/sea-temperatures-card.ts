@@ -614,7 +614,11 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
                             : html`<span class="temp-value"
                                   >${
                                     isNumeric(place.temperature)
-                                      ? formatNumber(Number(place.temperature), this.hass)
+                                      ? formatNumber(
+                                          Number(place.temperature),
+                                          this.hass,
+                                          this._precisionOptions(place.entity_id),
+                                        )
                                       : place.temperature
                                   }</span
                                 >
@@ -660,6 +664,13 @@ export class SeaTemperaturesCard extends LitElement implements LovelaceCard {
     }
     const state = this.hass.states[place.entity_id];
     return state ? formatShortDateTime(new Date(state.last_updated), this.hass) : '';
+  }
+
+  /** Intl options for the precision the user chose for the entity in HA, if any. */
+  private _precisionOptions(entityId: string): Intl.NumberFormatOptions | undefined {
+    const precision = this.hass.entities?.[entityId]?.display_precision;
+    if (typeof precision !== 'number' || precision < 0 || precision > 20) return undefined;
+    return { minimumFractionDigits: precision, maximumFractionDigits: precision };
   }
 
   private _renderStat(label: string, value?: string, unit?: string): TemplateResult {

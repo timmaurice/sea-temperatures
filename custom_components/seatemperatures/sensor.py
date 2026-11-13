@@ -17,7 +17,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
 from . import build_unique_id, entry_location_key
-from .const import BASE_URL, CONF_AREA, CONF_PATH, CONF_PLACE, DOMAIN
+from .const import (
+    BASE_URL,
+    CONF_AREA,
+    CONF_DISPLAY_NAME,
+    CONF_PATH,
+    CONF_PLACE,
+    DOMAIN,
+)
 from .coordinator import SeaTemperatureConfigEntry, SeaTemperatureCoordinator
 from .parser import validate_location_path
 
@@ -79,6 +86,9 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sea Temperature Sensor."""
 
     _attr_has_entity_name = True
+    # The 30-point chart series is the same on every poll; the card reads it from
+    # the live state, so one copy per state write would only bloat the recorder.
+    _unrecorded_attributes = frozenset({"charts"})
 
     def __init__(
         self,
@@ -167,7 +177,7 @@ class SeaTemperatureSensor(CoordinatorEntity, SensorEntity):
 
         return {
             "identifiers": {(DOMAIN, self._location_key)},
-            "name": self._place_name,
+            "name": self._entry.data.get(CONF_DISPLAY_NAME) or self._place_name,
             "manufacturer": "Sea Temperatures",
             "model": "Sea Temperature Monitor",
             "configuration_url": url,
