@@ -65,9 +65,7 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pt=(t=dt
                           <span class="place-name">${t.name}</span>
                           ${t.country?W`<span class="place-country">${t.country}</span>`:""}
                         </div>
-                        ${this._config.show_last_updated?W`<div class="last-updated">
-                                ${this.hass.states[t.entity_id]?function(t,e){const n=function(t){switch(t?.locale?.time_format){case"12":case"am_pm":return!0;case"24":return!1;default:return}}(e);return Mt(t,e,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit",...void 0===n?{}:{hour12:n}})}(new Date(this.hass.states[t.entity_id].last_updated),this.hass):""}
-                              </div>`:""}
+                        ${this._config.show_last_updated?W`<div class="last-updated">${this._lastUpdatedText(t)}</div>`:""}
                       </div>
                       <div class="current-temp">
                         ${t.unavailable?W`<span class="temp-value unavailable" title=${t.temperature}>&mdash;</span>`:W`<span class="temp-value"
@@ -90,7 +88,7 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pt=(t=dt
                 `;var e,n,r})}
         </div>
       </ha-card>
-    `}_precisionOptions(t){const e=this.hass.entities?.[t]?.display_precision;if(!("number"!=typeof e||e<0||e>20))return{minimumFractionDigits:e,maximumFractionDigits:e}}_renderStat(t,e,n){if(!e||"unknown"===e||"unavailable"===e)return W``;const r=Number(e),i=!isNaN(r),a=i?wt(r,this.hass):e;return W`
+    `}_lastUpdatedText(t){const e=/^(\d{4})-(\d{2})-(\d{2})/.exec(t.date??"");if(e)return function(t,e){return Mt(t,e,{year:"numeric",month:"short",day:"numeric"})}(new Date(Number(e[1]),Number(e[2])-1,Number(e[3])),this.hass);const n=this.hass.states[t.entity_id];return n?function(t,e){const n=function(t){switch(t?.locale?.time_format){case"12":case"am_pm":return!0;case"24":return!1;default:return}}(e);return Mt(t,e,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit",...void 0===n?{}:{hour12:n}})}(new Date(n.last_updated),this.hass):""}_precisionOptions(t){const e=this.hass.entities?.[t]?.display_precision;if(!("number"!=typeof e||e<0||e>20))return{minimumFractionDigits:e,maximumFractionDigits:e}}_renderStat(t,e,n){if(!e||"unknown"===e||"unavailable"===e)return W``;const r=Number(e),i=!isNaN(r),a=i?wt(r,this.hass):e;return W`
       <div class="stat-item">
         <span class="stat-label">${t}</span>
         <span class="stat-value">${a}${i?n:""}</span>
