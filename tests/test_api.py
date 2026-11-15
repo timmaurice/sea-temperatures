@@ -566,6 +566,26 @@ async def test_fetch_without_a_current_reading_is_update_failed(payload) -> None
         await coordinator._async_update_data()
 
 
+async def test_fetch_keeps_a_reading_of_exactly_zero_degrees() -> None:
+    """0.0 °C is a real reading, not a missing one."""
+    entry = SimpleNamespace(
+        data={CONF_PATH: "/europe/denmark/copenhagen/", CONF_PLACE: "Copenhagen"},
+        options={},
+        async_on_unload=MagicMock(),
+    )
+    payload = {"sst": {"today": 0.0, "yesterday": 0.2}}
+
+    with patch(
+        "custom_components.seatemperatures.coordinator.SeaTemperatureAPI"
+    ) as api:
+        api.return_value.get_temperatures = AsyncMock(return_value=payload)
+        coordinator = SeaTemperatureCoordinator(
+            MagicMock(), entry, "/europe/denmark/copenhagen/"
+        )
+
+    assert await coordinator._async_update_data() == payload
+
+
 async def test_every_request_carries_an_explicit_timeout(mock_hass) -> None:
     """A host that accepts the connection but never answers must not hang a refresh."""
     api = SeaTemperatureAPI(mock_hass)
