@@ -93,7 +93,8 @@ class SeaTemperatureCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # The parser always returns {"sst": {}}, which is truthy, so an empty
         # parse (page layout changed) has to be detected on the reading itself.
-        if not data or not data.get("sst", {}).get("today"):
+        # 0.0 °C is a valid reading, so test for None, not falsiness.
+        if not data or data.get("sst", {}).get("today") is None:
             raise UpdateFailed(f"Failed to fetch data for place {self._place_name}")
 
         return data
